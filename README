@@ -1,1 +1,16 @@
-boost spirit based parser for the franca IDL
+A boost spirit based parser for the franca IDL including an object model
+for code generation. 
+
+
+Requirements
+------------
+
+In order to compile the code you need a copy of simppl. Enable C++11 on
+your compiler. Also needs boost spirit qi parser framework.
+
+
+Plans
+-----
+
+Make the object model usable for code generation (needs some kind
+of templating library).

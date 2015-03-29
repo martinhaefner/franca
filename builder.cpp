@@ -7,25 +7,103 @@ namespace fp = franca::parser;
 namespace fm = franca::model;
 
 
-template<typename... T>
-struct package_builder : public boost::static_visitor<void>
+struct interface_builder : public boost::static_visitor<void>
 {
-   typedef typename std::tuple<std::reference_wrapper<T>...> tuple_type;
-   
-   package_builder(tuple_type&& tup)
-    : tup_(tup)
+   interface_builder(fm::interface& i)
+    : i_(i)
    {
       // NOOP
    }
    
-   template<typename U>
-   void operator()(const U& u) const
+   void operator()(const fp::method& s) const
    {
-      typedef typename simppl::make_typelist<T...>::type list_type;
-      std::get<simppl::Find<std::vector<U>, list_type>::value>(tup_).get().push_back(u);
+      // FIXME 
    }
    
-   tuple_type tup_;
+   void operator()(const fp::fire_and_forget_method& s) const
+   {
+      // FIXME 
+   }
+   
+   void operator()(const fp::broadcast& s) const
+   {
+      // FIXME 
+   }
+   
+   void operator()(const fp::attribute& s) const
+   {
+      // FIXME 
+   }
+   
+   void operator()(const fp::struct_& s) const
+   {
+      // FIXME 
+   }
+   
+   void operator()(const fp::enumeration& e) const
+   {
+      // FIXME 
+   }
+   
+   fm::interface& i_;
+};
+
+
+// ---------------------------------------------------------------------
+
+
+struct typecollection_builder : public boost::static_visitor<void>
+{
+   typecollection_builder(fm::typecollection& coll)
+    : coll_(coll)
+   {
+      // NOOP
+   }
+   
+   void operator()(const fp::struct_& s) const
+   {
+      // FIXME 
+   }
+   
+   void operator()(const fp::enumeration& e) const
+   {
+      // FIXME 
+   }
+   
+   fm::typecollection& coll_;
+};
+
+
+// ---------------------------------------------------------------------
+
+
+struct package_builder : public boost::static_visitor<void>
+{
+   package_builder(fm::package& package)
+    : package_(package)
+   {
+      // NOOP
+   }
+   
+   void operator()(const fp::interface& i) const
+   {
+      auto mi = new fm::interface(i.name_, i.version_.major_, i.version_.minor_, package_);
+      
+      std::for_each(i.parseitems_.begin(), i.parseitems_.end(), [mi]( const fp::interface_item_type& item) {
+         boost::apply_visitor(interface_builder(*mi), item);
+      });
+   }
+   
+   void operator()(const fp::typecollection& tc) const
+   {
+      auto mtc = new fm::typecollection(tc.name_, package_);
+      
+      std::for_each(tc.parseitems_.begin(), tc.parseitems_.end(), [mtc]( const fp::tc_item_type& item) {
+         boost::apply_visitor(typecollection_builder(*mtc), item);
+      });
+   }
+   
+   fm::package& package_;
 };
 
 
@@ -41,8 +119,8 @@ fm::package& franca::builder::build(fm::package& root, const fp::document& parse
       parent = new fm::package(str, *parent);
    });
    
-   std::for_each(parsetree.parseitems_.begin(), parsetree.parseitems_.end(), [parent]( const doc_item_type& item) {
-      boost::apply_visitor(package_builder(), item);
+   std::for_each(parsetree.parseitems_.begin(), parsetree.parseitems_.end(), [parent]( const fp::doc_item_type& item) {
+      boost::apply_visitor(package_builder(*parent), item);
    });
    
    return root;

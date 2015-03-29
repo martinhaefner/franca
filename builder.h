@@ -10,6 +10,7 @@ namespace franca
 {
 
 
+/// model builder
 struct builder
 {
    static 

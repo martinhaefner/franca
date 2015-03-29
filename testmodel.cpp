@@ -22,5 +22,7 @@ int main(int argc, const char** argv)
    fm::package root;
    fm::package this_package = franca::builder::build(root, doc);
    
+   std::cout << root.name() << root.packages_[0]->name() << "." << root.packages_[0]->packages_[0]->name() << std::endl;
+   
    return EXIT_SUCCESS;
 }

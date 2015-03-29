@@ -1,0 +1,59 @@
+package my.test
+      
+      
+interface Hello 
+{
+   version { major 1 minor 2 }
+
+
+   broadcast bc
+   {
+      out { }
+   }
+
+   
+   method eval 
+   {           
+      in  { 
+         int i 
+         float f 
+      }
+                                                 
+      out { double d }     
+      
+      error MyErrors
+   }
+
+   
+   method shoot fireAndForget
+   {
+      in { }
+   }
+
+   
+   broadcast bc1
+   {
+      out { }
+   }
+
+   
+   attribute Int32 myAttr readonly 
+}
+
+
+typecollection MyTypes
+{
+   enumeration MyErrors
+   {
+      E1 = "1"
+      E2
+      E3 = "A"
+   }
+   
+   
+   struct AStruct
+   {
+      Int32 i
+      String str
+   }
+}

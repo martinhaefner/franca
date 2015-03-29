@@ -9,6 +9,8 @@
 #include <tuple>
 #include <string>
 
+#include <boost/algorithm/string.hpp>
+
 
 namespace franca
 {
@@ -184,6 +186,9 @@ struct typecollection : named_element, parented<typecollection>
 {
    typecollection(const std::string& name, package& parent, bool add = true);
    
+   /// @name a (full)qualified type name
+   type* resolve(const std::string& name);
+   
    std::vector<type*> types_;
    package* parent_;
 };
@@ -222,6 +227,19 @@ struct package : named_element, parented<package>
       // NOOP
    }
    
+   /// get root node
+   package& root()
+   {
+      package* rc = this;
+      
+      while(rc->parent_)
+         rc = rc->parent_;
+         
+      return *rc;
+   }
+   
+   type* find(const std::string& fqn) { /*FIXME*/ return nullptr; }
+   
    std::vector<typecollection*> collections_;
    std::vector<interface*> interfaces_;
    
@@ -259,6 +277,100 @@ typecollection::typecollection(const std::string& name, package& parent, bool ad
 {
    if (add)
       parent_->collections_.push_back(this);
+}
+
+
+#if 0
+inline
+Type* package::find(const std::string& type_name)
+{
+   std::vector<std::string> tokens = split(type_name, ".");
+   
+   // last token is type's name
+   std::string type = tokens.rbegin();
+   tokens.pop_back();
+   
+   // this token - if available - is typecollection or interface 
+   std::string tc_name;
+   if (tokens.size() > 0)
+   {
+      tc_name = tokens.rbegin();
+      tokens.pop_back();
+   }
+   
+   // rest of tokens are package names
+   package* p = nullptr;
+   
+   if (tokens.size() > 0)
+   {
+      // first search in this namespace, then in root   
+      for (int i=0; i<2 && p == nullptr; ++i)
+      {
+         p = (i==0 ? this : root());
+         
+         for(auto iter = tokens.begin(); iter != tokens.end(); ++iter)
+         {
+            auto rc = std::find(p->packages_.begin(), p->packages_->end(), [iter](const package& package) {
+               return package->name_ == *iter;
+            });
+            
+            if (rc == p->packages_.end())
+            {
+               p = nullptr;
+            }
+            else
+               p = *rc;
+         }
+      }
+      
+      if (p == nullptr)
+      throw std::runtime_error("type not found");
+   }
+   
+   if (p == root() && tc_name.empty())
+   {
+      auto iter = intrinsic_types.find(type);
+      if (iter != intrinsic_types.end())
+         return &iter; 
+   }
+   
+   if (tc.empty())
+   {
+   auto tc = std::find(p->packages_.begin(), p->packages_->end(), [iter](const package& package) {
+      return package->name_ == *iter;
+   });
+}
+#endif
+
+
+inline
+type* typecollection::resolve(const std::string& name)
+{
+   std::vector<std::string> tokens;
+   boost::algorithm::split(tokens, name, boost::algorithm::is_any_of("."));
+   
+   if (tokens.size() == 0)
+   {
+      // either local typecollection or intrinsic type
+
+      auto iter = intrinsic_types.find(name);
+      if (iter != intrinsic_types.end())
+         return &const_cast<type&>(*iter);
+      
+      auto iter2 = std::find_if(types_.begin(), types_.end(), [name](const type* t){ return name == t->name(); });
+      if (iter2 != types_.end())
+         return *iter2;
+   }
+   else
+   {
+      // qualified name, either full qualified or local type
+      // if just one name prefix: local package, either in here or in 
+      // sibling typecollection or interface
+   }
+   
+   // now search global
+   
+   throw std::runtime_error("type not found");
 }
 
 

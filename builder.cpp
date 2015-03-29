@@ -1,6 +1,6 @@
 #include "builder.h"
 
-#include "simppl/typelist.h"
+#include <memory>
 
 
 namespace fp = franca::parser;
@@ -61,9 +61,57 @@ struct typecollection_builder : public boost::static_visitor<void>
    }
    
    void operator()(const fp::struct_& s) const
-   {
-      // FIXME 
+   { 
+      // FIXME must distinguish if type is given two times?!
+      
+      // search for struct in model, if already there, do nothing
+      {
+         auto iter = std::find_if(coll_.types_.begin(), coll_.types_.end(), [&s](const fm::type* typ) {
+            return s.name_ == typ->name();
+         });
+      
+         if (iter != coll_.types_.end())
+            return;
+      }
+      
+      std::unique_ptr<fm::struct_> new_s(new fm::struct_(s.name_, coll_));
+      
+      // search for parent if apropriate
+      if (s.base_)
+      {
+         // if not available drop struct again
+         // FIXME distinguish first and second pass
+         fm::type* base = coll_.resolve(*s.base_);
+         if (!base)
+            return;
+            
+         fm::struct_* base_struct = dynamic_cast<fm::struct_*>(base);
+         if (base_struct)
+         {
+            new_s->base_ = base_struct;
+         }
+         else
+            throw std::runtime_error("invalid base type");
+      }
+      
+      // iterate over all elements of struct. 
+      for (auto iter = s.values_.begin(); iter != s.values_.end(); ++iter)
+      {
+         // resolve element
+         fm::type* t = coll_.resolve(iter->type_);
+         if (t)
+         {
+            // if can be resolved add the element to the struct
+            new_s->members_.push_back(std::make_tuple(t, iter->name_));
+         }
+         else
+            return;
+      }
+   
+      // keep it
+      new_s.release();
    }
+   
    
    void operator()(const fp::enumeration& e) const
    {

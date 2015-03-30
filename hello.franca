@@ -49,11 +49,21 @@ typecollection MyTypes
       E2
       E3 = "A"
    }
+      
+   struct Base
+   {
+      Float d
+   }
    
-   
-   struct AStruct
+   struct AStruct extends Base
    {
       Int32 i
       String str
+   }
+   
+   struct BStruct
+   {
+      MyTypes.AStruct a
+      Int32 i
    }
 }

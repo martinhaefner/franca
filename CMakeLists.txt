@@ -15,4 +15,5 @@ add_executable(tester
    testmodel.cpp
    parser.cpp
    builder.cpp
+   model.cpp
 )

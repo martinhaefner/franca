@@ -10,6 +10,7 @@
 #include <string>
 
 #include <boost/algorithm/string.hpp>
+#include <boost/optional.hpp>
 
 
 namespace franca
@@ -19,8 +20,9 @@ namespace model
 {
    
 struct package;
-struct Enumeration;
+struct enumeration;
 struct typecollection;
+struct interface;
 
 
 struct named_element
@@ -118,12 +120,12 @@ struct struct_ : type
       // NOOP
    }
    
-   struct_(const std::string& name, typecollection& parent, struct_& base)
+   /*struct_(const std::string& name, typecollection& parent, struct_& base)
     : type(name, parent)
     , base_(&base)
    {
       // NOOP
-   }
+   }*/
    
    struct_* base_;
    
@@ -133,14 +135,28 @@ struct struct_ : type
 
 struct enumerator : named_element
 {
+   enumerator(const std::string& name, int value)
+    : named_element(name)
+    , value_(value)
+   {
+      // NOOP
+   }
+   
    int value_;
    
-   Enumeration* parent_;
+   enumeration* parent_;
 };
 
 
 struct enumeration : type
 {
+   enumeration(const std::string& name, typecollection& parent)
+    : type(name, parent)
+    , base_(0)
+   {
+      // NOOP
+   }
+   
    std::vector<enumerator> enumerators_;
    enumeration* base_;
 };
@@ -148,34 +164,75 @@ struct enumeration : type
 
 struct arg : named_element
 {
+   arg(const std::string& name, type* t)
+    : named_element(name)
+    , type_(t)
+   {
+      // NOOP
+   }
+   
    type* type_;
 };
 
 
 struct method : named_element
 {
+   method(const std::string& name, interface& iface)
+    : named_element(name)
+    , interface_(iface)
+   {
+      // NOOP
+   }
+   
+   interface& get_interface()
+   {
+      return interface_; 
+   }
+   
    std::vector<arg> in_;
    std::vector<arg> out_;
    
-   enumeration errors_;
+   enumeration* errors_;
+   interface& interface_;
 };
 
 
 struct fire_and_forget_method : named_element
 {
+   fire_and_forget_method(const std::string& name)
+    : named_element(name)
+   {
+      // NOOP
+   }
+   
    std::vector<arg> args_;
 };
 
 
 struct broadcast : named_element
 {
+   broadcast(const std::string& name)
+    : named_element(name)
+   {
+      // NOOP
+   }
+   
    std::vector<arg> args_;
 };
 
 
 struct attribute : named_element
 {
-   type type_;
+   attribute(const std::string& name, type& t, bool readonly, bool no_subscriptions)
+    : named_element(name)
+    , type_(&t)
+    , readonly_(readonly)
+    , no_subscriptions_(no_subscriptions)
+   {
+      // NOOP
+   }
+   
+   type* type_;
    
    bool readonly_;   
    bool no_subscriptions_;
@@ -189,7 +246,7 @@ struct typecollection : named_element, parented<typecollection>
    /// @name a (full)qualified type name
    type* resolve(const std::string& name);
    
-   std::vector<type*> types_;
+   std::vector<type*> types_;   // FIXME make this a vector<type> instead
    package* parent_;
 };
    
@@ -204,7 +261,7 @@ struct interface : typecollection
    std::vector<attribute> attrs_;
    std::vector<method> methods_;
    std::vector<fire_and_forget_method> ff_methods_;
-   std::vector<broadcast> events_;
+   std::vector<broadcast> broadcasts_;
 };
 
 
@@ -236,9 +293,10 @@ struct package : named_element, parented<package>
          rc = rc->parent_;
          
       return *rc;
-   }
-   
-   type* find(const std::string& fqn) { /*FIXME*/ return nullptr; }
+   }   
+      
+   template<typename IteratorT>
+   type* resolve(IteratorT begin, IteratorT end, const std::string& typecoll, const std::string& type_name);
    
    std::vector<typecollection*> collections_;
    std::vector<interface*> interfaces_;
@@ -251,126 +309,41 @@ struct package : named_element, parented<package>
 // ---------------------------------------------------------------------
 
 
+template<typename IteratorT>
 inline
-type::type(const std::string& name, typecollection& parent)
- : named_element(name)
- , parent_(&parent)
+type* package::resolve(IteratorT begin, IteratorT end, const std::string& typecoll, const std::string& type_name)
 {
-   parent_->types_.push_back(this);
-}
-
-
-inline
-interface::interface(const std::string& name, int major, int minor, package& parent)
- : typecollection(name, parent, false)
- , major_(major)
- , minor_(minor)
-{
-   parent_->interfaces_.push_back(this);
-}
-
-
-inline
-typecollection::typecollection(const std::string& name, package& parent, bool add)
- : named_element(name)
- , parent_(&parent)
-{
-   if (add)
-      parent_->collections_.push_back(this);
-}
-
-
-#if 0
-inline
-Type* package::find(const std::string& type_name)
-{
-   std::vector<std::string> tokens = split(type_name, ".");
+   package* p = this;
    
-   // last token is type's name
-   std::string type = tokens.rbegin();
-   tokens.pop_back();
-   
-   // this token - if available - is typecollection or interface 
-   std::string tc_name;
-   if (tokens.size() > 0)
-   {
-      tc_name = tokens.rbegin();
-      tokens.pop_back();
-   }
-   
-   // rest of tokens are package names
-   package* p = nullptr;
-   
-   if (tokens.size() > 0)
-   {
-      // first search in this namespace, then in root   
-      for (int i=0; i<2 && p == nullptr; ++i)
-      {
-         p = (i==0 ? this : root());
-         
-         for(auto iter = tokens.begin(); iter != tokens.end(); ++iter)
-         {
-            auto rc = std::find(p->packages_.begin(), p->packages_->end(), [iter](const package& package) {
-               return package->name_ == *iter;
-            });
-            
-            if (rc == p->packages_.end())
-            {
-               p = nullptr;
-            }
-            else
-               p = *rc;
-         }
-      }
+   if (begin != end)
+   {      
+      auto iter = std::find_if(packages_.begin(), packages_.end(), [begin](const package* pack){ return *begin == pack->name(); });
       
-      if (p == nullptr)
-      throw std::runtime_error("type not found");
-   }
-   
-   if (p == root() && tc_name.empty())
-   {
-      auto iter = intrinsic_types.find(type);
-      if (iter != intrinsic_types.end())
-         return &iter; 
-   }
-   
-   if (tc.empty())
-   {
-   auto tc = std::find(p->packages_.begin(), p->packages_->end(), [iter](const package& package) {
-      return package->name_ == *iter;
-   });
-}
-#endif
-
-
-inline
-type* typecollection::resolve(const std::string& name)
-{
-   std::vector<std::string> tokens;
-   boost::algorithm::split(tokens, name, boost::algorithm::is_any_of("."));
-   
-   if (tokens.size() == 0)
-   {
-      // either local typecollection or intrinsic type
-
-      auto iter = intrinsic_types.find(name);
-      if (iter != intrinsic_types.end())
-         return &const_cast<type&>(*iter);
-      
-      auto iter2 = std::find_if(types_.begin(), types_.end(), [name](const type* t){ return name == t->name(); });
-      if (iter2 != types_.end())
-         return *iter2;
+      if (iter != packages_.end())      
+         return (*iter)->resolve(++begin, end, typecoll, type_name);      
    }
    else
-   {
-      // qualified name, either full qualified or local type
-      // if just one name prefix: local package, either in here or in 
-      // sibling typecollection or interface
+   {      
+      auto iter = std::find_if(collections_.begin(), collections_.end(), [typecoll](const typecollection* coll){ return typecoll == coll->name(); });
+      if (iter != collections_.end())
+      {
+         auto typeiter = std::find_if((*iter)->types_.begin(), (*iter)->types_.end(), [type_name](const type* t){ return type_name == t->name(); });
+         if (typeiter != (*iter)->types_.end())
+            return *typeiter;
+      }
+      else
+      {      
+         auto iter = std::find_if(interfaces_.begin(), interfaces_.end(), [typecoll](const interface* iface){ return typecoll == iface->name(); });
+         if (iter != interfaces_.end())
+         {
+            auto typeiter = std::find_if((*iter)->types_.begin(), (*iter)->types_.end(), [type_name](const type* t){ return type_name == t->name(); });
+            if (typeiter != (*iter)->types_.end())
+               return *typeiter;
+         }
+      }
    }
    
-   // now search global
-   
-   throw std::runtime_error("type not found");
+   return nullptr;   
 }
 
 

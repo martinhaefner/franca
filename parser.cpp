@@ -159,6 +159,7 @@ BOOST_FUSION_ADAPT_STRUCT(
 
 #define identifier      lexeme[+char_("a-zA-Z0-9_")]
 #define type_identifier lexeme[+char_("a-zA-Z0-9_")]
+#define type_reference  lexeme[+char_("a-zA-Z0-9_.")]
 
 #define inargs          (lit("in") >>  '{' >> *arg_ >> '}') 
 #define outargs         (lit("out") >> '{' >> *arg_ >> '}')      
@@ -181,7 +182,7 @@ struct grammar : qi::grammar<IteratorT, fp::document(), ascii::space_type>
             >> '}';
       
       arg_ %=
-         type_identifier >> identifier;
+         type_reference >> identifier;
             
       method_ %=
          lit("method") >> identifier 
@@ -193,7 +194,7 @@ struct grammar : qi::grammar<IteratorT, fp::document(), ascii::space_type>
          
       attribute_ %=
          lit("attribute") 
-            >> type_identifier >> identifier 
+            >> type_reference >> identifier 
             >> -( lit("readonly")[at_c<2>(qi::_val) = true] 
                  ^ lit("noSubscriptions")[at_c<3>(qi::_val) = true] );
             
@@ -202,7 +203,7 @@ struct grammar : qi::grammar<IteratorT, fp::document(), ascii::space_type>
             >> '{' >> -outargs >> '}';
       
       errors_ %= lit("error") 
-         >> ( identifier | ( -( lit("extends") >> identifier) >> enumeration_decl_ ) );
+         >> ( type_reference | ( -( lit("extends") >> type_reference) >> enumeration_decl_ ) );
             
       enumerator_value_ %=
          lit('=') >> '"' >> (int_|boost::spirit::hex) >> '"';
@@ -211,16 +212,16 @@ struct grammar : qi::grammar<IteratorT, fp::document(), ascii::space_type>
          '{' >> *( type_identifier >> -enumerator_value_ ) >> '}';
       
       structure_decl_ %=
-         '{' >> *( type_identifier >> identifier ) >> '}';
+         '{' >> *( type_reference >> identifier ) >> '}';
       
       structure_ %=
          lit("struct") >> identifier
-            >> -(lit("extends") >> identifier)
+            >> -(lit("extends") >> type_reference)
             >> structure_decl_;
             
       enumeration_ %= 
          lit("enumeration") >> identifier 
-            >> -(lit("extends") >> identifier)
+            >> -(lit("extends") >> type_reference)
             >> enumeration_decl_;
             
       interface_ %=

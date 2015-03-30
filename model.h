@@ -176,6 +176,8 @@ struct method : named_element
    std::vector<arg> out_;
    
    enumeration* errors_;
+   
+private:
    interface& interface_;
 };
 
@@ -226,10 +228,11 @@ struct typecollection : named_element, parented<typecollection>
 {
    typecollection(const std::string& name);
    
-   /// @name a (full)qualified type name
+   /// @name a (full)qualified (dot-separated) type name
    type* resolve(const std::string& name);
    
-   std::vector<type*> types_;    // beware this is polymorphic
+   // FIXME make this a list of shared_ptr's
+   std::vector<type*> types_;    // beware this is polymorphic, therefore we store pointers
    package* parent_;
 };
    

@@ -75,22 +75,11 @@ struct type : named_element, parented<type>
    type(const std::string& name, typecollection& parent);
    
    /// intrinsic types only
-   type(const std::string& name)
-    : named_element(name)
-    , parent_(0)
-   {
-      // NOOP
-   }
+   type(const std::string& name);
    
-   virtual ~type()
-   {
-      // NOOP
-   }
+   virtual ~type();
    
-   bool operator<(const type& rhs) const
-   {
-      return name_ < rhs.name_;
-   }
+   bool operator<(const type& rhs) const;
    
    typecollection* parent_;
 };
@@ -119,13 +108,7 @@ struct struct_ : type
    {
       // NOOP
    }
-   
-   /*struct_(const std::string& name, typecollection& parent, struct_& base)
-    : type(name, parent)
-    , base_(&base)
-   {
-      // NOOP
-   }*/
+      
    
    struct_* base_;
    
@@ -241,19 +224,19 @@ struct attribute : named_element
 
 struct typecollection : named_element, parented<typecollection>
 {
-   typecollection(const std::string& name, package& parent, bool add = true);
+   typecollection(const std::string& name);
    
    /// @name a (full)qualified type name
    type* resolve(const std::string& name);
    
-   std::vector<type*> types_;   // FIXME make this a vector<type> instead
+   std::vector<type*> types_;    // beware this is polymorphic
    package* parent_;
 };
    
    
 struct interface : typecollection
 {
-   interface(const std::string& name, int major, int minor, package& parent);
+   interface(const std::string& name, int major, int minor);
    
    int major_;
    int minor_;
@@ -268,40 +251,29 @@ struct interface : typecollection
 struct package : named_element, parented<package>
 {
    /// normal namespace item
-   package(const std::string& name, package& parent)
-    : named_element(name)
-    , parent_(&parent)
-   {
-      assert(name.find(".") == std::string::npos);
-      parent_->packages_.push_back(this);
-   }
+   package(const std::string& name);
    
    /// root package
-   package()
-    : named_element("")
-    , parent_(0)
-   {
-      // NOOP
-   }
+   package();
    
    /// get root node
-   package& root()
-   {
-      package* rc = this;
+   package& root();
+   
+   ///@return a reference to the newly insered package
+   package& add_package(const package& pck);
+   
+   interface& add_interface(const interface& iface);
+   
+   typecollection& add_typecollection(const typecollection& coll);
       
-      while(rc->parent_)
-         rc = rc->parent_;
-         
-      return *rc;
-   }   
-      
+   ///@return 0 if type cannot be found within the model
    template<typename IteratorT>
    type* resolve(IteratorT begin, IteratorT end, const std::string& typecoll, const std::string& type_name);
    
-   std::vector<typecollection*> collections_;
-   std::vector<interface*> interfaces_;
+   std::vector<typecollection> collections_;
+   std::vector<interface> interfaces_;
    
-   std::vector<package*> packages_;
+   std::vector<package> packages_;
    package* parent_;
 };
 
@@ -317,27 +289,27 @@ type* package::resolve(IteratorT begin, IteratorT end, const std::string& typeco
    
    if (begin != end)
    {      
-      auto iter = std::find_if(packages_.begin(), packages_.end(), [begin](const package* pack){ return *begin == pack->name(); });
+      auto iter = std::find_if(packages_.begin(), packages_.end(), [begin](const package& pack){ return *begin == pack.name(); });
       
       if (iter != packages_.end())      
-         return (*iter)->resolve(++begin, end, typecoll, type_name);      
+         return iter->resolve(++begin, end, typecoll, type_name);      
    }
    else
    {      
-      auto iter = std::find_if(collections_.begin(), collections_.end(), [typecoll](const typecollection* coll){ return typecoll == coll->name(); });
+      auto iter = std::find_if(collections_.begin(), collections_.end(), [typecoll](const typecollection& coll){ return typecoll == coll.name(); });
       if (iter != collections_.end())
       {
-         auto typeiter = std::find_if((*iter)->types_.begin(), (*iter)->types_.end(), [type_name](const type* t){ return type_name == t->name(); });
-         if (typeiter != (*iter)->types_.end())
+         auto typeiter = std::find_if(iter->types_.begin(), iter->types_.end(), [type_name](const type* t){ return type_name == t->name(); });
+         if (typeiter != iter->types_.end())
             return *typeiter;
       }
       else
       {      
-         auto iter = std::find_if(interfaces_.begin(), interfaces_.end(), [typecoll](const interface* iface){ return typecoll == iface->name(); });
+         auto iter = std::find_if(interfaces_.begin(), interfaces_.end(), [typecoll](const interface& iface){ return typecoll == iface.name(); });
          if (iter != interfaces_.end())
          {
-            auto typeiter = std::find_if((*iter)->types_.begin(), (*iter)->types_.end(), [type_name](const type* t){ return type_name == t->name(); });
-            if (typeiter != (*iter)->types_.end())
+            auto typeiter = std::find_if(iter->types_.begin(), iter->types_.end(), [type_name](const type* t){ return type_name == t->name(); });
+            if (typeiter != iter->types_.end())
                return *typeiter;
          }
       }

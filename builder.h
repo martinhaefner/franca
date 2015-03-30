@@ -13,6 +13,7 @@ namespace franca
 /// model builder
 struct builder
 {
+   /// @return the currently parsed package
    static 
    model::package& build(model::package& root, const parser::document& parsetree);
 };

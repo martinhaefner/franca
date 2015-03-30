@@ -290,19 +290,19 @@ struct package_builder : public boost::static_visitor<void>
    
    void operator()(const fp::interface& i) const
    {
-      auto mi = new fm::interface(i.name_, i.version_.major_, i.version_.minor_, package_);
+      fm::interface mi(i.name_, i.version_.major_, i.version_.minor_);
       
-      std::for_each(i.parseitems_.begin(), i.parseitems_.end(), [mi]( const fp::interface_item_type& item) {
-         boost::apply_visitor(interface_builder(*mi), item);
+      std::for_each(i.parseitems_.begin(), i.parseitems_.end(), [this,mi]( const fp::interface_item_type& item) {
+         boost::apply_visitor(interface_builder(this->package_.add_interface(mi)), item);
       });
    }
    
    void operator()(const fp::typecollection& tc) const
    {
-      auto mtc = new fm::typecollection(tc.name_, package_);
+      fm::typecollection mtc(tc.name_);
       
-      std::for_each(tc.parseitems_.begin(), tc.parseitems_.end(), [mtc]( const fp::tc_item_type& item) {
-         boost::apply_visitor(typecollection_builder(*mtc), item);
+      std::for_each(tc.parseitems_.begin(), tc.parseitems_.end(), [this,mtc]( const fp::tc_item_type& item) {
+         boost::apply_visitor(typecollection_builder(this->package_.add_typecollection(mtc)), item);
       });
    }
    
@@ -319,7 +319,8 @@ fm::package& franca::builder::build(fm::package& root, const fp::document& parse
    fm::package* parent = &root;
    
    std::for_each(parsetree.package_.begin(), parsetree.package_.end(), [&parent](const std::string& str) {
-      parent = new fm::package(str, *parent);
+      fm::package pck(str);
+      parent = &parent->add_package(pck);      
    });
    
    std::for_each(parsetree.parseitems_.begin(), parsetree.parseitems_.end(), [parent]( const fp::doc_item_type& item) {

@@ -20,9 +20,9 @@ int main(int argc, const char** argv)
    fp::document doc = fp::parse(argv[1]);
    
    fm::package root;
-   fm::package this_package = franca::builder::build(root, doc);
+   fm::package& this_package = franca::builder::build(root, doc);
    
-   std::cout << root.name() << root.packages_[0]->name() << "." << root.packages_[0]->packages_[0]->name() << std::endl;
+   std::cout << root.name() << root.packages_[0].name() << "." << root.packages_[0].packages_[0].name() << std::endl;
    
    return EXIT_SUCCESS;
 }

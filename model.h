@@ -316,6 +316,12 @@ struct typecollection : named_element, parented<typecollection>
    /// @name a (full)qualified (dot-separated) type name
    type* resolve(const std::string& name);
    
+   inline
+   package& get_package()
+   {
+      return *parent_;
+   }
+   
    // FIXME make this a list of shared_ptr's
    std::vector<type*> types_;    // beware this is polymorphic, therefore we store pointers
    package* parent_;
@@ -346,6 +352,19 @@ struct package : named_element, parented<package>
    
    /// get root node
    package& root();
+      
+   inline
+   bool is_root() const
+   {
+      return !parent_;
+   }
+   
+   /// @return the parent package.
+   inline
+   package& get_package()
+   {
+      return *parent_;
+   }
       
    ///@return a reference to the newly insered package
    package& add_package(const package& pck);

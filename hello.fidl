@@ -69,7 +69,7 @@ typecollection MyTypes
    {
       Float d
    }
-         
+   
    struct BStruct
    {
       MyTypes.AStruct a

@@ -62,6 +62,8 @@ struct enum_value
 
 struct enumeration
 {
+   bool eval(const enum_value& value);
+   
    std::string name_;
    boost::optional<std::string> base_;
    
@@ -78,6 +80,8 @@ struct struct_entry
 
 struct struct_
 {
+   bool eval(const struct_entry& item);   
+   
    std::string name_;
    boost::optional<std::string> base_;
    
@@ -85,8 +89,11 @@ struct struct_
 };
 
 
+// TODO maybe merge with enumeration, the only difference is the missing name here
 struct extended_error
 {
+   bool eval(const enum_value& value);
+   
    boost::optional<std::string> base_;
    std::vector<enum_value> values_;
 };
@@ -97,6 +104,9 @@ typedef boost::variant<std::string, extended_error> method_error;
 
 struct method
 {
+   bool eval_in(const arg& argument);
+   bool eval_out(const arg& argument);
+   
    std::string name_;
    
    std::vector<arg> in_;
@@ -107,6 +117,8 @@ struct method
 
 struct fire_and_forget_method
 {
+   bool eval_in(const arg& argument);
+   
    std::string name_;
    
    std::vector<arg> in_;
@@ -115,6 +127,8 @@ struct fire_and_forget_method
 
 struct broadcast
 {
+   bool eval_out(const arg& argument);
+   
    std::string name_;   
    std::vector<arg> args_;
 };
@@ -131,6 +145,8 @@ typedef boost::variant<method,
 
 struct interface
 {
+   bool eval(const interface_item_type& new_item);
+   
    std::string name_;
    version version_;
    
@@ -143,6 +159,8 @@ typedef boost::variant<enumeration, struct_> tc_item_type;
 
 struct typecollection
 {
+   bool eval(const tc_item_type& new_item);
+   
    std::string name_;
    std::vector<tc_item_type> parseitems_;
 };
@@ -153,6 +171,8 @@ typedef boost::variant<interface, typecollection> doc_item_type;
 
 struct document
 {
+   bool eval(const doc_item_type& new_item);
+   
    std::vector<std::string> package_;
    std::vector<doc_item_type> parseitems_;
 };

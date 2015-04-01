@@ -187,6 +187,11 @@ struct arg : named_element
       // NOOP
    }
    
+   type& get_type()
+   {
+      return *type_;
+   }
+   
    type* type_;
 };
 
@@ -288,6 +293,12 @@ struct attribute : named_element
    interface& get_interface()
    {
       return interface_; 
+   }
+   
+   inline
+   type& get_type()
+   {
+      return *type_;
    }
       
    type* type_;

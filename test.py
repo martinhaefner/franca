@@ -7,7 +7,7 @@ import franca
 
 
 root = franca.package()
-franca.builder.parse_and_build(root, "hello.franca")
+franca.builder.parse_and_build(root, "hello.fidl")
 
 
 def print_typecollection(tc, indent) :

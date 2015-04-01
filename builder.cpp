@@ -369,15 +369,15 @@ struct interface_builder : typecollection_builder
    
    
    void operator()(const fp::attribute& s) const
-   {
-      // FIXME check double name
-      
+   {      
       fm::type* t = i_.resolve(s.type_);
       
       if (!t)
          t = new unresolved(s.type_);
       
       fm::attribute attr(s.name_, *t, i_, s.readonly_, s.no_subscriptions_);      
+      
+      i_.attrs_.push_back(attr);
    }
       
       

@@ -1,16 +1,9 @@
 #include <boost/config/warning_disable.hpp>
 
 #include <boost/spirit/include/qi.hpp>
-
-#include <boost/spirit/include/phoenix_core.hpp>
-#include <boost/spirit/include/phoenix_operator.hpp>
-#include <boost/spirit/include/phoenix_fusion.hpp>
-#include <boost/spirit/include/phoenix_stl.hpp>
-#include <boost/spirit/include/phoenix_object.hpp>
-#include <boost/spirit/home/phoenix/bind/bind_function.hpp>
+#include <boost/spirit/include/phoenix.hpp>
 
 #include <boost/fusion/include/adapt_struct.hpp>
-#include <boost/fusion/include/push_back.hpp>
 #include <boost/fusion/include/at_c.hpp>
 
 #include <boost/optional.hpp>
@@ -19,32 +12,181 @@
 #include <functional>
 #include <iostream>
 #include <fstream>
+#include <set>
 
 #include "parser.h"
 
 
-using boost::spirit::qi::_1;
 using boost::spirit::qi::lit;
-using boost::spirit::qi::rule;
 using boost::spirit::qi::char_;
 using boost::spirit::qi::lexeme;
 using boost::spirit::qi::int_;
-using boost::spirit::qi::string;
-using boost::spirit::qi::phrase_parse;
+using boost::spirit::qi::hex;
+using boost::spirit::qi::_val;
+using boost::spirit::qi::_pass;
 
 namespace qi = boost::spirit::qi;
 namespace ascii = boost::spirit::ascii;
-
-using boost::phoenix::ref;
-using boost::phoenix::val;
-using boost::phoenix::construct;
-
-using namespace qi::labels;
-
-using boost::phoenix::at_c;
-using boost::phoenix::push_back;
-
+namespace phx = boost::phoenix;
 namespace fp = franca::parser;
+
+
+// ---------------------------------------------------------------------
+
+
+namespace
+{
+   
+bool is_keyword(const std::string& token)
+{
+   static std::set<std::string> keywords({
+      "package",
+      "interface",
+      "typecollection",
+      "method",
+      "attribute",
+      "in",
+      "out",
+      "version",
+      "error",
+      "broadcast",
+      "struct",
+      "extends",
+      "enumeration",
+      "array",
+      "of",
+      "union",
+      "map",
+      "to",
+      "typedef",
+      "is",
+      "major",
+      "minor"
+   });
+   
+   return keywords.find(token) != keywords.end();   
+}
+
+bool is_intrinsic_type(const std::string& token)
+{
+   static std::set<std::string> intrinsics({
+      "UInt8",
+      "Int8",
+      "UInt16",
+      "Int16",
+      "UInt32",
+      "Int32",
+      "UInt64",
+      "Int64",
+      "Boolean",
+      "Float",
+      "Double",
+      "String",
+      "ByteBuffer"      
+   });
+   
+   return intrinsics.find(token) != intrinsics.end();   
+}
+
+
+struct name_extractor : public boost::static_visitor<std::string>
+{   
+   template<typename T>
+   inline
+   const std::string& operator()(const T& t) const
+   {
+      return t.name_;
+   }
+};
+
+
+template<typename ContainerT, typename ItemT>
+bool eval(const ContainerT& container, const ItemT& new_item)
+{
+   std::string name = boost::apply_visitor(name_extractor(), new_item);
+   
+   return !is_keyword(name) 
+      && !is_intrinsic_type(name)
+      && std::find_if(container.begin(), container.end(), [&name](const ItemT& item){
+            return name == boost::apply_visitor(name_extractor(), item);
+         }) == container.end();
+}
+
+
+template<typename ContainerT>
+bool eval(const ContainerT& container, const std::string& name)
+{
+   typedef typename ContainerT::value_type item_type;
+   
+   return !is_keyword(name) 
+      && !is_intrinsic_type(name)
+      && std::find_if(container.begin(), container.end(), [&name](const item_type& item){
+            return name == item.name_;
+         }) == container.end();
+}
+
+
+}   // namespace
+
+
+bool fp::interface::eval(const interface_item_type& new_item)
+{
+   return ::eval(parseitems_, new_item);
+}
+
+
+bool fp::typecollection::eval(const tc_item_type& new_item)
+{
+   return ::eval(parseitems_, new_item);
+}
+
+
+bool fp::document::eval(const doc_item_type& new_item)
+{
+   return ::eval(parseitems_, new_item);   
+}
+
+
+bool fp::method::eval_in(const arg& argument)
+{
+   return ::eval(in_, argument.name_);   
+}
+
+
+bool fp::method::eval_out(const arg& argument)
+{
+   return ::eval(out_, argument.name_);
+}
+
+
+bool fp::fire_and_forget_method::eval_in(const arg& argument)
+{
+   return ::eval(in_, argument.name_);
+}
+
+
+bool fp::broadcast::eval_out(const arg& argument)
+{
+   return ::eval(args_, argument.name_);
+}
+
+
+bool fp::struct_::eval(const struct_entry& item)
+{
+   return ::eval(values_, item.name_);   
+}
+
+
+bool fp::enumeration::eval(const enum_value& value)
+{
+   return ::eval(values_, value.name_);   
+}
+
+
+bool fp::extended_error::eval(const enum_value& value)
+{
+   return ::eval(values_, value.name_);
+}
 
 
 // ---------------------------------------------------------------------
@@ -161,8 +303,8 @@ BOOST_FUSION_ADAPT_STRUCT(
 #define type_identifier lexeme[+char_("a-zA-Z0-9_")]
 #define type_reference  lexeme[+char_("a-zA-Z0-9_.")]
 
-#define inargs          (lit("in") >>  '{' >> *arg_ >> '}') 
-#define outargs         (lit("out") >> '{' >> *arg_ >> '}')      
+#define inargs(where)    (lit("in") >>  '{' >> *arg_[_pass = phx::bind(&fp::where::eval_in,  _val, qi::_1)] >> '}') 
+#define outargs(where)   (lit("out") >> '{' >> *arg_[_pass = phx::bind(&fp::where::eval_out, _val, qi::_1)] >> '}')      
 
 
 template <typename IteratorT>
@@ -186,43 +328,54 @@ struct grammar : qi::grammar<IteratorT, fp::document(), ascii::space_type>
             
       method_ %=
          lit("method") >> identifier 
-            >> '{' >> -inargs >> -outargs >> -errors_ >> '}';
+            >> '{' >> -inargs(method) >> -outargs(method) >> -errors_ >> '}';
                
       fireforget_method_ %=
          lit("method") >> identifier 
-            >> lit("fireAndForget") >> '{' >> -inargs >> '}';
+            >> lit("fireAndForget") >> '{' >> -inargs(fire_and_forget_method) >> '}';
          
       attribute_ %=
          lit("attribute") 
             >> type_reference >> identifier 
-            >> -( lit("readonly")[at_c<2>(qi::_val) = true] 
-                 ^ lit("noSubscriptions")[at_c<3>(qi::_val) = true] );
+            >> -( lit("readonly")[phx::at_c<2>(_val) = true] 
+                 ^ lit("noSubscriptions")[phx::at_c<3>(_val) = true] );
             
       broadcast_ %=
          lit("broadcast") >> identifier
-            >> '{' >> -outargs >> '}';
+            >> '{' >> -outargs(broadcast) >> '}';
       
+      extended_error_ %= 
+         -( lit("extends") >> type_reference ) 
+         >> '{' 
+            >> *enumeration_decl_[_pass = phx::bind(&fp::extended_error::eval, _val, qi::_1)]
+         >> '}';         
+         
       errors_ %= lit("error") 
-         >> ( type_reference | ( -( lit("extends") >> type_reference) >> enumeration_decl_ ) );
+         >> type_reference | extended_error_;
             
       enumerator_value_ %=
-         lit('=') >> '"' >> (int_|boost::spirit::hex) >> '"';
+         lit('=') >> '"' >> (int_|hex) >> '"';
       
       enumeration_decl_ %= 
-         '{' >> *( type_identifier >> -enumerator_value_ ) >> '}';
-      
-      structure_decl_ %=
-         '{' >> *( type_reference >> identifier ) >> '}';
-      
+         type_identifier >> -enumerator_value_;
+            
+      structentry_ %= 
+         type_reference >> identifier
+         ;
+         
       structure_ %=
          lit("struct") >> identifier
-            >> -(lit("extends") >> type_reference)
-            >> structure_decl_;
+            >> -( lit("extends") >> type_reference )
+            >> '{' 
+               >> *structentry_[_pass = phx::bind(&fp::struct_::eval, _val, qi::_1)]
+            >> '}';
             
       enumeration_ %= 
          lit("enumeration") >> identifier 
-            >> -(lit("extends") >> type_reference)
-            >> enumeration_decl_;
+            >> -( lit("extends") >> type_reference )
+            >> '{' 
+               >> *enumeration_decl_[_pass = phx::bind(&fp::enumeration::eval, _val, qi::_1)]
+            >> '}';
             
       interface_ %=
          lit("interface") >> identifier
@@ -233,17 +386,17 @@ struct grammar : qi::grammar<IteratorT, fp::document(), ascii::space_type>
                    | broadcast_ 
                    | attribute_ 
                    | enumeration_ 
-                   | structure_ )
+                   | structure_ )[_pass = phx::bind(&fp::interface::eval, _val, qi::_1)]
             >> '}';
        
       typecollection_ %=
          lit("typecollection") >> identifier
             >> '{'
                >> *( enumeration_ 
-                   | structure_ )
+                   | structure_ )[_pass = phx::bind(&fp::typecollection::eval, _val, qi::_1)]
             >> '}';
             
-      franca_ %= package_ >> *( interface_ | typecollection_ );
+      franca_ %= package_ >> *( interface_ | typecollection_ )[_pass = phx::bind(&fp::document::eval, _val, qi::_1)];
       
       package_.name("package");
       interface_.name("interface");
@@ -254,31 +407,32 @@ struct grammar : qi::grammar<IteratorT, fp::document(), ascii::space_type>
       (
          franca_,
          std::cout
-             << val("Error! Expecting ")
-             << qi::_4                               // what failed?
-             << val(" here: \"")
-             << construct<std::string>(qi::_3, qi::_2)   // iterators to error-pos, end
-             << val("\"")
-             << std::endl
+            << phx::val("Error! Expecting ")
+            << qi::_4                               // what failed?
+            << phx::val(" here: \"")
+            << phx::construct<std::string>(qi::_3, qi::_2)   // iterators to error-pos, end
+            << phx::val("\"")
+            << std::endl
       );
    }
       
-   rule<IteratorT, fp::document(), ascii::space_type> franca_;
-   rule<IteratorT, std::vector<std::string>(), ascii::space_type> package_;
-   rule<IteratorT, fp::interface(), ascii::space_type> interface_;
-   rule<IteratorT, fp::version(), ascii::space_type> version_;
-   rule<IteratorT, fp::method(), ascii::space_type> method_;
-   rule<IteratorT, fp::fire_and_forget_method(), ascii::space_type> fireforget_method_;
-   rule<IteratorT, fp::broadcast(), ascii::space_type> broadcast_;
-   rule<IteratorT, fp::arg(), ascii::space_type> arg_;
-   rule<IteratorT, fp::typecollection(), ascii::space_type> typecollection_;
-   rule<IteratorT, fp::attribute(), ascii::space_type> attribute_;
-   rule<IteratorT, fp::enumeration(), ascii::space_type> enumeration_;
-   rule<IteratorT, std::vector<fp::enum_value>(), ascii::space_type> enumeration_decl_;
-   rule<IteratorT, int(), ascii::space_type> enumerator_value_;
-   rule<IteratorT, fp::method_error(), ascii::space_type> errors_;
-   rule<IteratorT, fp::struct_(), ascii::space_type> structure_;
-   rule<IteratorT, std::vector<fp::struct_entry>(), ascii::space_type> structure_decl_;
+   qi::rule<IteratorT, fp::document(),                  ascii::space_type> franca_;
+   qi::rule<IteratorT, std::vector<std::string>(),      ascii::space_type> package_;
+   qi::rule<IteratorT, fp::interface(),                 ascii::space_type> interface_;
+   qi::rule<IteratorT, fp::version(),                   ascii::space_type> version_;
+   qi::rule<IteratorT, fp::method(),                    ascii::space_type> method_;
+   qi::rule<IteratorT, fp::fire_and_forget_method(),    ascii::space_type> fireforget_method_;
+   qi::rule<IteratorT, fp::broadcast(),                 ascii::space_type> broadcast_;
+   qi::rule<IteratorT, fp::arg(),                       ascii::space_type> arg_;
+   qi::rule<IteratorT, fp::typecollection(),            ascii::space_type> typecollection_;
+   qi::rule<IteratorT, fp::attribute(),                 ascii::space_type> attribute_;
+   qi::rule<IteratorT, fp::enumeration(),               ascii::space_type> enumeration_;
+   qi::rule<IteratorT, fp::enum_value(),                ascii::space_type> enumeration_decl_;
+   qi::rule<IteratorT, int(),                           ascii::space_type> enumerator_value_;
+   qi::rule<IteratorT, fp::extended_error(),            ascii::space_type> extended_error_;
+   qi::rule<IteratorT, fp::method_error(),              ascii::space_type> errors_;
+   qi::rule<IteratorT, fp::struct_entry(),              ascii::space_type> structentry_;   
+   qi::rule<IteratorT, fp::struct_(),                   ascii::space_type> structure_;   
 };
 
 
@@ -307,7 +461,7 @@ fp::document fp::parse(const char* filename)
    std::string::const_iterator iter = str.begin();
    std::string::const_iterator end = str.end();
 
-   if (!phrase_parse(iter, end, grammar, ascii::space, doc) || iter != end)
+   if (!qi::phrase_parse(iter, end, grammar, ascii::space, doc) || iter != end)
       throw std::runtime_error("parser failure");
       
    return doc;

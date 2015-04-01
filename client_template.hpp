@@ -5,11 +5,7 @@
 #define @{interface.fqn('_').upper()}_HPP
 
 
-namespace X
-{
-   
-namespace Y
-{
+@{interface.package().namespaces_open()}
 
 class @{interface.name}Client : public Client
 {
@@ -25,7 +21,7 @@ public:
    }
 
    @for m in interface.methods :
-   void @{m.name}(@{m.in_args!!list_args}@{len(m.in_args) and ", " or ""}@{m.out_args!!list_args})
+   void @{m.name}(@{m.in_args.for_method_decl_in()}@{ (len(m.in_args) > 0 and len(m.out_args) > 0) and ', ' or '' }@{m.out_args.for_method_decl_out()})
    {
       // TODO do anything
    }
@@ -33,12 +29,12 @@ public:
    @end
    
    @for b in interface.broadcasts :
-   virtual void @{b.name}(@{b.args!!list_args}) = 0;   
+   virtual void @{b.name}(@{b.args.for_method_decl_in()}) = 0;   
    
    @end
    
    @for m in interface.fire_and_forget_methods :
-   void @{m.name}(@{m.args!!list_args})
+   void @{m.name}(@{m.args.for_method_decl_in()})
    {
       send_request(...);
    }
@@ -52,9 +48,7 @@ private:
    @end
 };
 
-}   // namespace
 
-}   // namespace
-
+@{interface.package().namespaces_close()}
 
 #endif   // @{interface.fqn('_').upper()}_HPP

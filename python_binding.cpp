@@ -81,6 +81,8 @@ BOOST_PYTHON_MODULE(franca)
       .def_readonly("interfaces", &fm::package::interfaces_)
       .def_readonly("packages", &fm::package::packages_)
       .def_readonly("parent", &fm::package::parent_)
+      .def("package", &fm::package::get_package, return_value_policy<reference_existing_object>())   
+      .def("is_root", &fm::package::is_root)
       .def("fqn", &fm::package::fqn)
    ;      
       
@@ -155,12 +157,14 @@ BOOST_PYTHON_MODULE(franca)
       .def_readonly("methods", &fm::interface::methods_)
       .def_readonly("fire_and_forget_methods", &fm::interface::ff_methods_)
       .def_readonly("broadcasts", &fm::interface::broadcasts_)
+      .def("package", &fm::interface::get_package, return_value_policy<reference_existing_object>())   
       .def("fqn", &fm::interface::fqn)
    ;
       
    class_<fm::typecollection>("typecollection", no_init)            
       .def_readonly("name", &fm::typecollection::name)        
       .def_readonly("types", &fm::typecollection::types_)      
+      .def("package", &fm::typecollection::get_package, return_value_policy<reference_existing_object>())   
       .def("fqn", &fm::typecollection::fqn)
    ;
       

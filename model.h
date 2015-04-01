@@ -5,12 +5,11 @@
 #include <cassert>
 #include <vector>
 #include <set>
+#include <list>
 
-#include <tuple>
 #include <string>
 
 #include <boost/algorithm/string.hpp>
-#include <boost/optional.hpp>
 
 
 namespace franca
@@ -53,18 +52,27 @@ protected:
 
 template<typename ElementT>
 struct parented
-{
-   inline
-   std::string fqn(const char* sep = "::") const
+{      
+   std::string fqn(const char* sep) const
    {
       std::string this_name = static_cast<const ElementT*>(this)->name();
       
-      auto parent = static_cast<const ElementT*>(this)->parent_;
-      
-      if (parent)
-         return parent->fqn(sep) + sep + this_name; 
+      auto parent = static_cast<const ElementT*>(this)->parent_;         
+      if (parent != 0)    
+      {  
+         std::string p = parent->fqn(sep);         
+         return p + sep + this_name;       
+      }
       else
          return this_name;
+   }
+
+
+protected:
+
+   virtual ~parented()
+   {
+      // NOOP
    }
 };
 
@@ -75,7 +83,7 @@ struct type : named_element, parented<type>
    type(const std::string& name, typecollection& parent);
    
    /// intrinsic types only
-   type(const std::string& name);
+   type(const std::string& name);   
    
    virtual ~type();
    
@@ -85,23 +93,13 @@ struct type : named_element, parented<type>
 };
 
 
-static
-std::set<type> intrinsic_types = {
-     type("Int8")
-   , type("Int16")
-   , type("Int32")
-   , type("Int64")
-   , type("UInt8")
-   , type("UInt16")
-   , type("UInt32")
-   , type("UInt64")
-   , type("Float")
-   , type("String")
-};
+extern std::set<type> intrinsic_types;     
 
    
 struct struct_ : type
 {
+   typedef std::pair<type*, std::string> member_type;
+   
    struct_(const std::string& name, typecollection& parent)
     : type(name, parent)
     , base_(0)
@@ -109,10 +107,30 @@ struct struct_ : type
       // NOOP
    }
       
+   inline
+   struct_& base()
+   {
+      if (!has_base())
+         throw std::runtime_error("no baseclass provided");
+         
+      return *dynamic_cast<struct_*>(base_);
+   }
    
-   struct_* base_;
+   inline
+   bool has_base()
+   {
+      return base_ != 0;
+   }
    
-   std::vector<std::tuple<type*, std::string> > members_;
+   inline
+   std::vector<member_type>& members()
+   {
+      return members_;
+   }
+   
+   type* base_;
+   
+   std::vector<member_type> members_;
 };
 
 
@@ -123,7 +141,7 @@ struct enumerator : named_element
     , value_(value)
    {
       // NOOP
-   }
+   }   
    
    int value_;
    
@@ -140,8 +158,23 @@ struct enumeration : type
       // NOOP
    }
    
+   inline
+   enumeration& base()
+   {
+      if (!has_base())
+         throw std::runtime_error("no baseclass provided");
+         
+      return *dynamic_cast<enumeration*>(base_);
+   }
+   
+   inline
+   bool has_base()
+   {
+      return base_ != 0;
+   }
+   
    std::vector<enumerator> enumerators_;
-   enumeration* base_;
+   type* base_;
 };
 
 
@@ -160,6 +193,7 @@ struct arg : named_element
 
 struct method : named_element
 {
+   inline
    method(const std::string& name, interface& iface)
     : named_element(name)
     , interface_(iface)
@@ -167,15 +201,31 @@ struct method : named_element
       // NOOP
    }
    
+   inline
    interface& get_interface()
    {
       return interface_; 
    }
    
+   inline
+   enumeration& errors()
+   {
+      if (!has_errors())
+         throw std::runtime_error("method does not declare errors");
+         
+      return *dynamic_cast<enumeration*>(errors_);
+   }
+   
+   inline
+   bool has_errors()
+   {
+      return errors_ != 0;
+   }
+   
    std::vector<arg> in_;
    std::vector<arg> out_;
    
-   enumeration* errors_;
+   type* errors_;
    
 private:
    interface& interface_;
@@ -184,40 +234,64 @@ private:
 
 struct fire_and_forget_method : named_element
 {
-   fire_and_forget_method(const std::string& name)
+   fire_and_forget_method(const std::string& name, interface& iface)
     : named_element(name)
+    , interface_(iface)
    {
       // NOOP
    }
    
+   inline
+   interface& get_interface()
+   {
+      return interface_; 
+   }
+   
    std::vector<arg> args_;
+   interface& interface_;
 };
 
 
 struct broadcast : named_element
 {
-   broadcast(const std::string& name)
+   broadcast(const std::string& name, interface& iface)
     : named_element(name)
+    , interface_(iface)
    {
       // NOOP
    }
    
+   inline
+   interface& get_interface()
+   {
+      return interface_; 
+   }
+   
    std::vector<arg> args_;
+   interface& interface_;
 };
 
 
 struct attribute : named_element
 {
-   attribute(const std::string& name, type& t, bool readonly, bool no_subscriptions)
+   attribute(const std::string& name, type& t, interface& iface, bool readonly, bool no_subscriptions)
     : named_element(name)
     , type_(&t)
+    , interface_(iface)
     , readonly_(readonly)
     , no_subscriptions_(no_subscriptions)
    {
       // NOOP
    }
    
+   inline
+   interface& get_interface()
+   {
+      return interface_; 
+   }
+      
    type* type_;
+   interface& interface_;
    
    bool readonly_;   
    bool no_subscriptions_;
@@ -261,7 +335,7 @@ struct package : named_element, parented<package>
    
    /// get root node
    package& root();
-   
+      
    ///@return a reference to the newly insered package
    package& add_package(const package& pck);
    
@@ -273,10 +347,10 @@ struct package : named_element, parented<package>
    template<typename IteratorT>
    type* resolve(IteratorT begin, IteratorT end, const std::string& typecoll, const std::string& type_name);
    
-   std::vector<typecollection> collections_;
-   std::vector<interface> interfaces_;
+   std::list<typecollection> collections_;
+   std::list<interface> interfaces_;
    
-   std::vector<package> packages_;
+   std::list<package> packages_;
    package* parent_;
 };
 

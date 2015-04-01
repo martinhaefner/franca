@@ -33,8 +33,8 @@ struct arg
 struct attribute
 {
    attribute()
-    : no_subscriptions_(false)
-    , readonly_(false)
+    : readonly_(false)
+    , no_subscriptions_(false)    
    {
       // NOOP
    }

@@ -8,6 +8,20 @@ namespace model
 {
 
 
+std::set<type> intrinsic_types = {
+     type("Int8")
+   , type("Int16")
+   , type("Int32")
+   , type("Int64")
+   , type("UInt8")
+   , type("UInt16")
+   , type("UInt32")
+   , type("UInt64")
+   , type("Float")
+   , type("String")
+};
+
+
 type::type(const std::string& name, typecollection& parent)
  : named_element(name)
  , parent_(&parent) 
@@ -70,11 +84,11 @@ type* typecollection::resolve(const std::string& name)
 
       auto iter = intrinsic_types.find(name);
       if (iter != intrinsic_types.end())
-         return &const_cast<type&>(*iter);
-      
+         return &const_cast<type&>(*iter);      
+            
       auto iter2 = std::find_if(types_.begin(), types_.end(), [name](const type* t){ return name == t->name(); });
-      if (iter2 != types_.end())
-         return *iter2;
+      if (iter2 != types_.end())      
+         return *iter2;      
    }
    else if (tokens.size() > 1)
    {      
@@ -88,14 +102,15 @@ type* typecollection::resolve(const std::string& name)
       std::string typecoll = *tokens.rbegin();
       tokens.pop_back();
       
+      //std::cout << "Searching for " << type_name << " in collection " << typecoll;
       // namespace lookup
       type* rc = parent_->resolve(tokens.begin(), tokens.end(), typecoll, type_name);      
       
-      if (rc != nullptr)      
-         return rc;
+      if (rc != nullptr)         
+         return rc;      
       
       // root lookup
-      return parent_->root().resolve(tokens.begin(), tokens.end(), typecoll, type_name);                     
+      return parent_->root().resolve(tokens.begin(), tokens.end(), typecoll, type_name);                           
    }   
    
    return nullptr;
@@ -122,7 +137,7 @@ package::package()
 
 
 package& package::root()
-{
+{   
    package* rc = this;
    
    while(rc->parent_)
@@ -157,7 +172,7 @@ typecollection& package::add_typecollection(const typecollection& coll)
    
    return collections_.back();
 }
-   
+
 
 }   // model
 

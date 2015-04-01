@@ -17,10 +17,15 @@ int main(int argc, const char** argv)
       return EXIT_FAILURE;
    }
    
+   std::cout << "Parsing..." << std::endl;
    fp::document doc = fp::parse(argv[1]);
    
+   std::cout << "Building model..." << std::endl;
    fm::package root;
    fm::package& this_package = franca::builder::build(root, doc);
+   
+   std::cout << "Resolving..." << std::endl;
+   franca::builder::resolve_all_symbols(root);
    
    std::cout << root.name() << root.packages_[0].name() << "." << root.packages_[0].packages_[0].name() << std::endl;
    

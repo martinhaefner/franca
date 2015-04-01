@@ -15,11 +15,11 @@ interface Hello
    method eval 
    {           
       in  { 
-         int i 
-         float f 
+         Int32 i 
+         Float f 
       }
                                                  
-      out { double d }     
+      out { Float d }     
       
       error MyErrors
    }
@@ -41,6 +41,15 @@ interface Hello
 }
 
 
+typecollection MyBaseTypes
+{
+   struct What
+   {
+      Int64 w
+   }
+}
+
+
 typecollection MyTypes
 {
    enumeration MyErrors
@@ -50,20 +59,21 @@ typecollection MyTypes
       E3 = "A"
    }
       
-   struct Base
+   struct Base extends MyBaseTypes.What
    {
       Float d
+   }
+         
+   struct BStruct
+   {
+      MyTypes.AStruct a
+      Int32 i
    }
    
    struct AStruct extends Base
    {
       Int32 i
       String str
-   }
+   }   
    
-   struct BStruct
-   {
-      MyTypes.AStruct a
-      Int32 i
-   }
 }

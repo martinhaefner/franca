@@ -9,7 +9,7 @@ namespace fp = franca::parser;
 namespace fm = franca::model;
 
 
-// FIXME implement duplicate checks
+// FIXME implement duplicate checks on union types (which is not done by the parser)
 
 
 namespace /* anonymous */
@@ -36,6 +36,33 @@ struct unresolved : fm::type
 void internal_resolve_unresolved(fm::enumeration& e)
 {   
    e.base_ = internal_resolve_unresolved(e.base_, *e.parent_);
+}
+
+
+void internal_resolve_unresolved(fm::union_& s)
+{   
+   std::for_each(s.members_.begin(), s.members_.end(), [&s](std::pair<fm::type*, std::string>& m){ m.first = internal_resolve_unresolved(m.first, *s.parent_); });   
+      
+   s.base_ = internal_resolve_unresolved(s.base_, *s.parent_);   
+}
+
+
+void internal_resolve_unresolved(fm::typedef_& t)
+{   
+   t.real_type_ = internal_resolve_unresolved(t.real_type_, *t.parent_);      
+}
+
+
+void internal_resolve_unresolved(fm::array& a)
+{   
+   a.element_type_ = internal_resolve_unresolved(a.element_type_, *a.parent_);      
+}
+
+
+void internal_resolve_unresolved(fm::map& m)
+{   
+   m.key_type_ = internal_resolve_unresolved(m.key_type_, *m.parent_);      
+   m.value_type_ = internal_resolve_unresolved(m.value_type_, *m.parent_);      
 }
 
 
@@ -101,20 +128,41 @@ void internal_resolve_unresolved(fm::broadcast& b)
 void internal_resolve_unresolved_tc(fm::typecollection& coll)
 {
    std::for_each(coll.types_.begin(), coll.types_.end(), [](fm::type* t){ 
-             
-      fm::struct_* s = dynamic_cast<fm::struct_*>(t);
-            
-      if (s)
+      
+      union {
+         fm::struct_* s;         
+         fm::enumeration* e;
+         fm::union_* u;
+         fm::typedef_* t;
+         fm::array* a;
+         fm::map* m;
+      } u;       
+      
+      if ((u.s = dynamic_cast<fm::struct_*>(t)) != 0)      
       {      
-         internal_resolve_unresolved(*s);             
+         internal_resolve_unresolved(*u.s);             
       }
-      else
-      {               
-         fm::enumeration* e = dynamic_cast<fm::enumeration*>(t);
-         
-         if (e)         
-            internal_resolve_unresolved(*e);                   
+      else if ((u.e = dynamic_cast<fm::enumeration*>(t)) != 0)      
+      {                                 
+         internal_resolve_unresolved(*u.e);                   
       }       
+      else if ((u.u = dynamic_cast<fm::union_*>(t)) != 0)      
+      {                                 
+         internal_resolve_unresolved(*u.u);                   
+      }       
+      else if ((u.t = dynamic_cast<fm::typedef_*>(t)) != 0)      
+      {                                 
+         internal_resolve_unresolved(*u.t);                   
+      }       
+      else if ((u.a = dynamic_cast<fm::array*>(t)) != 0)      
+      {                                 
+         internal_resolve_unresolved(*u.a);                   
+      }       
+      else if ((u.m = dynamic_cast<fm::map*>(t)) != 0)      
+      {                                 
+         internal_resolve_unresolved(*u.m);                   
+      }       
+      
       
    });
 }
@@ -276,6 +324,88 @@ struct typecollection_builder : public boost::static_visitor<void>
       // keep it
       new_e.release();
    }
+   
+   
+   void operator()(const fp::map& m) const
+   {
+      std::unique_ptr<fm::map> new_m(new fm::map(m.name_, coll_));
+      
+      new_m->key_type_ = coll_.resolve(m.key_);
+      
+      if (!new_m->key_type_)
+         new_m->key_type_ = new unresolved(m.key_);         
+         
+      new_m->value_type_ = coll_.resolve(m.value_);
+      
+      if (!new_m->value_type_)
+         new_m->value_type_ = new unresolved(m.value_);         
+         
+      new_m.release();      
+   }
+   
+   
+   void operator()(const fp::array& a) const
+   {
+      std::unique_ptr<fm::array> new_a(new fm::array(a.name_, coll_));
+      
+      new_a->element_type_ = coll_.resolve(a.type_);
+      
+      if (!new_a->element_type_)
+         new_a->element_type_ = new unresolved(a.type_);         
+         
+      new_a.release();      
+   }
+   
+   
+   void operator()(const fp::union_& s) const
+   {
+      std::unique_ptr<fm::union_> new_s(new fm::union_(s.name_, coll_));
+      
+      // search for parent if apropriate
+      if (s.base_)
+      {         
+         fm::type* base = coll_.resolve(*s.base_);
+                  
+         if (base)
+         {
+            if (dynamic_cast<fm::union_*>(base) == 0)
+               throw std::runtime_error("invalid struct base type");
+         }
+         else         
+            base = new unresolved(*s.base_);         
+                     
+         new_s->base_ = base;         
+      }
+      
+      // iterate over all elements of struct. 
+      for (auto iter = s.values_.begin(); iter != s.values_.end(); ++iter)
+      {         
+         // resolve element
+         fm::type* t = coll_.resolve(iter->type_);
+         if (!t)             
+            t = new unresolved(iter->type_);            
+                     
+         // if can be resolved add the element to the struct
+         new_s->members_.push_back(std::make_pair(t, iter->name_));
+      }
+   
+      // keep it
+      new_s.release();
+   }
+   
+   
+   void operator()(const fp::typedef_& t) const
+   {
+      std::unique_ptr<fm::typedef_> new_t(new fm::typedef_(t.name_, coll_));
+      
+      new_t->real_type_ = coll_.resolve(t.type_);
+      
+      if (!new_t->real_type_)
+         new_t->real_type_ = new unresolved(t.type_);      
+         
+      new_t.release();
+   }
+   
    
    fm::typecollection& coll_;
 };

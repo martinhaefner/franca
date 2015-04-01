@@ -214,6 +214,15 @@ BOOST_FUSION_ADAPT_STRUCT(
 )
 
 
+// FIXME looks the same like struct_ since inherited, can we skip?
+BOOST_FUSION_ADAPT_STRUCT(
+   fp::union_,
+   (std::string, name_)
+   (boost::optional<std::string>, base_)
+   (std::vector<fp::struct_entry>, values_)
+)
+
+
 BOOST_FUSION_ADAPT_STRUCT(
    fp::arg,
    (std::string, type_)
@@ -296,6 +305,28 @@ BOOST_FUSION_ADAPT_STRUCT(
 )
 
 
+BOOST_FUSION_ADAPT_STRUCT(
+   fp::typedef_,   
+   (std::string, name_)
+   (std::string, type_)
+)
+
+
+BOOST_FUSION_ADAPT_STRUCT(
+   fp::array,
+   (std::string, name_)
+   (std::string, type_)
+)
+
+
+BOOST_FUSION_ADAPT_STRUCT(
+   fp::map,
+   (std::string, name_)   
+   (std::string, key_)
+   (std::string, value_)
+)
+
+
 // ---------------------------------------------------------------------
 
 
@@ -311,7 +342,7 @@ template <typename IteratorT>
 struct grammar : qi::grammar<IteratorT, fp::document(), ascii::space_type>
 {
    grammar() : grammar::base_type(franca_)
-   {      
+   {   
       package_ %= 
          lit("package") 
             >> lexeme[+char_("a-zA-Z0-9_") % '.'];
@@ -370,13 +401,29 @@ struct grammar : qi::grammar<IteratorT, fp::document(), ascii::space_type>
                >> *structentry_[_pass = phx::bind(&fp::struct_::eval, _val, qi::_1)]
             >> '}';
             
+      union_ %=
+         lit("union") >> identifier
+            >> -( lit("extends") >> type_reference )
+            >> '{' 
+               >> *structentry_
+            >> '}';
+            
       enumeration_ %= 
          lit("enumeration") >> identifier 
             >> -( lit("extends") >> type_reference )
             >> '{' 
                >> *enumeration_decl_[_pass = phx::bind(&fp::enumeration::eval, _val, qi::_1)]
             >> '}';
-            
+        
+      array_ %= 
+         lit("array") >> identifier >> "of" >> type_reference;
+         
+      map_ %= 
+         lit("map") >> identifier >> '{' >> type_reference >> "to" >> type_reference >> '}';
+        
+      typedef_ %= 
+         lit("typedef") >> identifier >> "is" >> type_reference;
+         
       interface_ %=
          lit("interface") >> identifier
             >> '{'
@@ -386,14 +433,22 @@ struct grammar : qi::grammar<IteratorT, fp::document(), ascii::space_type>
                    | broadcast_ 
                    | attribute_ 
                    | enumeration_ 
-                   | structure_ )[_pass = phx::bind(&fp::interface::eval, _val, qi::_1)]
+                   | structure_
+                   | union_
+                   | array_
+                   | map_
+                   | typedef_ )[_pass = phx::bind(&fp::interface::eval, _val, qi::_1)]
             >> '}';
        
       typecollection_ %=
          lit("typecollection") >> identifier
             >> '{'
                >> *( enumeration_ 
-                   | structure_ )[_pass = phx::bind(&fp::typecollection::eval, _val, qi::_1)]
+                   | structure_
+                   | union_
+                   | array_
+                   | map_
+                   | typedef_ )[_pass = phx::bind(&fp::typecollection::eval, _val, qi::_1)]
             >> '}';
             
       franca_ %= package_ >> *( interface_ | typecollection_ )[_pass = phx::bind(&fp::document::eval, _val, qi::_1)];
@@ -433,6 +488,10 @@ struct grammar : qi::grammar<IteratorT, fp::document(), ascii::space_type>
    qi::rule<IteratorT, fp::method_error(),              ascii::space_type> errors_;
    qi::rule<IteratorT, fp::struct_entry(),              ascii::space_type> structentry_;   
    qi::rule<IteratorT, fp::struct_(),                   ascii::space_type> structure_;   
+   qi::rule<IteratorT, fp::union_(),                    ascii::space_type> union_;   
+   qi::rule<IteratorT, fp::array(),                     ascii::space_type> array_;
+   qi::rule<IteratorT, fp::map(),                       ascii::space_type> map_;
+   qi::rule<IteratorT, fp::typedef_(),                  ascii::space_type> typedef_;
 };
 
 

@@ -71,6 +71,29 @@ struct enumeration
 };
 
 
+struct typedef_
+{   
+   std::string name_;
+   std::string type_;
+};
+
+
+struct array
+{
+   std::string name_;
+   std::string type_;
+};
+
+
+struct map
+{
+   std::string name_;
+   
+   std::string key_;
+   std::string value_;
+};
+
+
 struct struct_entry
 {
    std::string type_;
@@ -86,6 +109,16 @@ struct struct_
    boost::optional<std::string> base_;
    
    std::vector<struct_entry> values_;
+};
+
+
+struct union_ : struct_
+{
+   inline
+   bool eval(const struct_entry& item)
+   {
+      return true;
+   }
 };
 
 
@@ -139,8 +172,12 @@ typedef boost::variant<method,
                        broadcast, 
                        attribute, 
                        enumeration, 
-                       struct_> 
-   interface_item_type;
+                       struct_,
+                       union_, 
+                       array,
+                       map,
+                       typedef_
+   > interface_item_type;
 
 
 struct interface
@@ -154,7 +191,13 @@ struct interface
 };
 
 
-typedef boost::variant<enumeration, struct_> tc_item_type;
+typedef boost::variant<enumeration, 
+                       struct_, 
+                       union_, 
+                       array,
+                       map,
+                       typedef_
+   > tc_item_type;
 
 
 struct typecollection

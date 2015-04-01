@@ -7,6 +7,9 @@
 #include "builder.h"
 
 
+// FIXME add newly introduced types
+
+
 namespace fm = franca::model;
 
 using namespace boost::python;

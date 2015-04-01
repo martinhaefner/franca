@@ -91,7 +91,7 @@ BOOST_PYTHON_MODULE(franca)
    
    class_<fm::arg>("arg", no_init)
       .def_readonly("name", &fm::arg::name)      
-      .def_readonly("type", &fm::arg::type_)
+      .def("type", &fm::arg::get_type, return_value_policy<reference_existing_object>())
    ;
    
    class_<fm::type>("type", no_init)
@@ -119,8 +119,8 @@ BOOST_PYTHON_MODULE(franca)
    
    class_<fm::method>("method", no_init)
       .def_readonly("name", &fm::method::name)          
-      .def_readonly("in", &fm::method::in_)          
-      .def_readonly("out", &fm::method::out_)                
+      .def_readonly("in_args", &fm::method::in_)          
+      .def_readonly("out_args", &fm::method::out_)                
       .def_readonly("has_errors", &fm::method::has_errors)      
       .def("errors", &fm::method::errors, return_value_policy<reference_existing_object>())      
       .def("interface", &fm::method::get_interface, return_value_policy<reference_existing_object>())          
@@ -139,11 +139,11 @@ BOOST_PYTHON_MODULE(franca)
    ;
    
    class_<fm::attribute>("attribute", no_init)
-      .def_readonly("name", &fm::attribute::name)      
-      .def_readonly("type", &fm::attribute::type_)      
+      .def_readonly("name", &fm::attribute::name)            
       .def_readonly("readonly", &fm::attribute::readonly_)   
       .def_readonly("no_subscriptions", &fm::attribute::no_subscriptions_)   
       .def("interface", &fm::attribute::get_interface, return_value_policy<reference_existing_object>())   
+      .def("type", &fm::attribute::get_type, return_value_policy<reference_existing_object>())
    ;   
    
    class_<fm::interface>("interface", no_init)    

@@ -23,17 +23,23 @@ interface Hello
       
       error MyErrors
    }
+   
+   
+   method noargs 
+   {           
+      in { }
+   }
 
    
    method shoot fireAndForget
    {
-      in { }
+      in { String str }
    }
 
    
    broadcast bc1
    {
-      out { }
+      out { Int64 u }
    }
 
    
@@ -74,6 +80,5 @@ typecollection MyTypes
    {
       Int32 i
       String str
-   }   
-   
+   }      
 }

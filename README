@@ -14,3 +14,16 @@ Plans
 
 Make the object model usable for code generation (needs some kind
 of templating library).
+
+
+build instructions
+------------------
+
+C++:
+   mkdir build
+   cd build
+   cmake ..
+
+Building the binder:
+   cd ..
+   python build_python_binding.py build

@@ -178,6 +178,57 @@ struct enumeration : type
 };
 
 
+struct union_ : struct_
+{
+   union_(const std::string& name, typecollection& parent)
+    : struct_(name, parent)
+   {
+      // NOOP
+   }
+};
+
+
+struct typedef_ : type
+{
+   typedef_(const std::string& name, typecollection& parent)
+    : type(name, parent)
+    , real_type_(0)
+   {
+      // NOOP
+   }
+   
+   type* real_type_;
+};
+
+
+struct array : type
+{
+   array(const std::string& name, typecollection& parent)
+    : type(name, parent)
+    , element_type_(0)
+   {      
+      // NOOP
+   }
+   
+   type* element_type_;
+};
+
+
+struct map : type
+{
+   map(const std::string& name, typecollection& parent)
+    : type(name, parent)
+    , key_type_(0)
+    , value_type_(0)
+   {
+      // NOOP
+   }
+   
+   type* key_type_;
+   type* value_type_;
+};
+
+
 struct arg : named_element
 {
    arg(const std::string& name, type* t)

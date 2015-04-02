@@ -112,14 +112,16 @@ int main(int argc, const char** argv)
       else
       {
          auto target = sorted_typelist.begin();         
-               
+#if 0               
          std::cout << "------------" << std::endl;
+#endif         
          
          while(target != sorted_typelist.end())               
          {                  
             bool r1 = (*iter)->depends(**target);
             bool r2 = (*target)->depends(**iter);
             
+#if 0            
             if (r1)
             {
                std::cout << (*iter)->name() << " depends on " << (*target)->name() << std::endl;
@@ -133,6 +135,7 @@ int main(int argc, const char** argv)
             }
             else
                std::cout << (*target)->name() << " does NOT depend on " << (*iter)->name() << std::endl;
+#endif
             
             if (r1)
             {

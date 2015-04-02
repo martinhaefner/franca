@@ -21,9 +21,15 @@ struct builder
    static 
    void parse_and_build(model::package& root, const char* franca_file);
    
-   /// @return the currently parsed package
+   /**
+    * @param filter The filter to apply for building the model (from namespace import statement). 
+    *        Beware that filter does currently not implement a full regular expression. Moreover, the
+    *        filter may only be applied until the depth of interface or typecollection, i.e. it is 
+    *        not possible to import a distinct type from a typecollection.
+    * @return the currently parsed package
+    */
    static 
-   model::package& build(model::package& root, const parser::document& parsetree);
+   model::package& build(model::package& root, const parser::document& parsetree, const std::string& filter);
    
    /// resolve types that had trouble to be resolved after first build,
    /// throws exception if not possible

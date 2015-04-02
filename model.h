@@ -549,6 +549,12 @@ struct package : named_element, parented<package>
    
    interface& add_interface(const interface& iface);
    
+   void add_import(const std::string& import)
+   {
+      if (!import.empty())    
+         imports_.push_back(import);
+   }
+   
    typecollection& add_typecollection(const typecollection& coll);
       
    ///@return 0 if type cannot be found within the model
@@ -556,10 +562,12 @@ struct package : named_element, parented<package>
    type* resolve(IteratorT begin, IteratorT end, const std::string& typecoll, const std::string& type_name);
    
    std::list<typecollection> collections_;
-   std::list<interface> interfaces_;
+   std::list<interface> interfaces_;   
    
    std::list<package> packages_;
    package* parent_;
+   
+   std::vector<std::string> imports_;
 };
 
 
@@ -580,24 +588,34 @@ type* package::resolve(IteratorT begin, IteratorT end, const std::string& typeco
          return iter->resolve(++begin, end, typecoll, type_name);      
    }
    else
-   {      
-      auto iter = std::find_if(collections_.begin(), collections_.end(), [typecoll](const typecollection& coll){ return typecoll == coll.name(); });
-      if (iter != collections_.end())
+   {         
       {
-         auto typeiter = std::find_if(iter->types_.begin(), iter->types_.end(), [type_name](const type* t){ return type_name == t->name(); });
-         if (typeiter != iter->types_.end())
-            return *typeiter;
+         // look into collections
+         
+         auto iter = std::find_if(collections_.begin(), collections_.end(), [typecoll](const typecollection& coll){ return typecoll == coll.name(); });
+         if (iter != collections_.end())
+         {
+            auto typeiter = std::find_if(iter->types_.begin(), iter->types_.end(), [type_name](const type* t){ return type_name == t->name(); });
+            if (typeiter != iter->types_.end())
+               return *typeiter;
+               
+            return nullptr;
+         }
       }
-      else
-      {      
+      
+      {
+         // look into interfaces
+         
          auto iter = std::find_if(interfaces_.begin(), interfaces_.end(), [typecoll](const interface& iface){ return typecoll == iface.name(); });
          if (iter != interfaces_.end())
          {
             auto typeiter = std::find_if(iter->types_.begin(), iter->types_.end(), [type_name](const type* t){ return type_name == t->name(); });
             if (typeiter != iter->types_.end())
                return *typeiter;
-         }
-      }
+               
+            return nullptr;
+         }         
+      }         
    }
    
    return nullptr;   

@@ -20,3 +20,24 @@ typecollection my_types
       Int32 i
    }
 }
+
+
+typecollection my_types1
+{   
+   union u
+   {      
+      String s
+      int32_t i
+   }
+   
+   typedef int32_t is Int32   
+   
+   
+   array my_array of TestStruct
+   map my_map { Int32 to Int64 }
+   
+   struct TestStruct
+   {
+      Int32 i
+   }
+}

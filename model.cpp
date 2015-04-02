@@ -133,6 +133,8 @@ type* typecollection::resolve(const std::string& name)
       auto iter2 = std::find_if(types_.begin(), types_.end(), [name](const type* t){ return name == t->name(); });
       if (iter2 != types_.end())      
          return *iter2;      
+         
+      // FIXME lookup in all imported packages (filter for * or explicit type name)
    }
    else if (tokens.size() > 1)
    {      

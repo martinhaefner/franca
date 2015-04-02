@@ -2,6 +2,7 @@
 
 #include <memory>
 #include <sstream>
+#include <libgen.h>
 
 #include "parser.h"
 
@@ -15,7 +16,7 @@ namespace /* anonymous */
    
 // forward decls
 fm::type* internal_resolve_unresolved(fm::type*, fm::typecollection&);
-void parse_recursive(std::vector<fp::document>& docs, const char* franca_file);
+void parse_recursive(std::vector<fp::document>& docs, const char* franca_file, const std::vector<std::string>& includes);
 
    
 /**
@@ -579,34 +580,52 @@ struct package_builder : public boost::static_visitor<void>
 
 struct import_visitor : public boost::static_visitor<void>
 {
-   import_visitor(std::vector<fp::document>& docs)
+   explicit
+   import_visitor(std::vector<fp::document>& docs, const std::vector<std::string>& includes)
     : docs_(docs)
+    , includes_(includes)
    {
       // NOOP
    }
    
    void operator()(const fp::namespace_import& import) const
    {
-      parse_recursive(docs_, import.file_.c_str());
+      parse_recursive(docs_, import.file_.c_str(), includes_);
    }
    
    void operator()(const std::string& filename) const
    {
-      parse_recursive(docs_, filename.c_str());
+      parse_recursive(docs_, filename.c_str(), includes_);
    }
    
    std::vector<fp::document>& docs_;
+   const std::vector<std::string>& includes_;
 };
 
 
-void parse_recursive(std::vector<fp::document>& docs, const char* franca_file)
+void parse_recursive(std::vector<fp::document>& docs, const char* franca_file, const std::vector<std::string>& includes)
 {
-   fp::document result = fp::parse(franca_file);
+   fp::document result = fp::parse(franca_file, includes);
    docs.push_back(result);
-   
-   std::for_each(result.imports_.begin(), result.imports_.end(), [&docs](const fp::import_type& i){
-      boost::apply_visitor(import_visitor(docs), i);
-   });
+
+   if (!result.imports_.empty())   
+   {
+      // add current document's path to this search path
+      std::vector<std::string> my_includes(includes);
+      
+      char doc_path[1024];
+      strncpy(doc_path, franca_file, sizeof(doc_path));
+      doc_path[sizeof(doc_path)-1] = '\0';
+      
+      char* dir = dirname(doc_path);
+      
+      if (strcmp(dir, "."))
+         my_includes.push_back(dir);
+      
+      std::for_each(result.imports_.begin(), result.imports_.end(), [&docs, &my_includes](const fp::import_type& i){
+         boost::apply_visitor(import_visitor(docs, my_includes), i);
+      });
+   }
 }
 
 
@@ -643,8 +662,16 @@ void franca::builder::resolve_all_symbols(model::package& root)
 /*static*/
 void franca::builder::parse_and_build(model::package& root, const char* franca_file)
 {
+   std::vector<std::string> dummy;
+   parse_and_build(root, franca_file, dummy);
+}
+
+
+/*static*/
+void franca::builder::parse_and_build(model::package& root, const char* franca_file, const std::vector<std::string>& includes)
+{
    std::vector<fp::document> docs;
-   parse_recursive(docs, franca_file);
+   parse_recursive(docs, franca_file, includes);
    
    std::for_each(docs.begin(), docs.end(), [&root](const fp::document& doc){
       (void)franca::builder::build(root, doc);

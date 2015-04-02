@@ -536,7 +536,7 @@ fp::document fp::parse(const char* filename)
    std::ifstream in(filename, std::ios_base::in);
 
    if (!in)
-      throw std::runtime_error("file not found");
+      throw std::runtime_error(std::string("file not found: ") + filename);
    
    in.unsetf(std::ios::skipws); // No white space skipping!
  

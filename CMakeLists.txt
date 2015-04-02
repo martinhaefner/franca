@@ -22,3 +22,7 @@ add_library(franca SHARED
    builder.cpp
    model.cpp   
 )
+
+
+add_executable(sorter sorter.cpp)
+target_link_libraries(sorter franca)

@@ -2,15 +2,21 @@ package my.test.base
 
 
 typecollection my_types
-{
-   typedef int32_t is Int32   
-   
+{   
    union u
-   {
+   {      
       String s
       int32_t i
    }
    
-   array my_array of String
+   typedef int32_t is Int32   
+   
+   
+   array my_array of TestStruct
    map my_map { Int32 to Int64 }
+   
+   struct TestStruct
+   {
+      Int32 i
+   }
 }

@@ -7,9 +7,6 @@
 #include "builder.h"
 
 
-// FIXME add newly introduced types
-
-
 namespace fm = franca::model;
 
 using namespace boost::python;
@@ -75,6 +72,13 @@ struct std_item
 
 // ---------------------------------------------------------------------
    
+   
+void (*parse_and_build)(fm::package&, const char*) 
+   = &franca::builder::parse_and_build;
+   
+void (*parse_and_build_with_includes)(fm::package&, const char*, const std::vector<std::string>&) 
+   = &franca::builder::parse_and_build;
+
 
 BOOST_PYTHON_MODULE(franca)
 {      
@@ -90,7 +94,8 @@ BOOST_PYTHON_MODULE(franca)
    ;      
       
    class_<franca::builder>("builder")
-      .def("parse_and_build", &franca::builder::parse_and_build)
+      .def("parse_and_build", parse_and_build)   
+      .def("parse_and_build", parse_and_build_with_includes)
       .staticmethod("parse_and_build")
    ;
    

@@ -13,7 +13,13 @@ namespace franca
 /// model builder
 struct builder
 {
-   /// @param root the (empty) root to parse the file to
+   /**
+    * This is the main parser function. Use this function for creating a
+    * franca model.
+    * 
+    * @param root     the (empty) root to parse the file to
+    * @param includes a list of search directories for imported files' lookup
+    */
    static 
    void parse_and_build(model::package& root, const char* franca_file, const std::vector<std::string>& includes);
    
@@ -35,6 +41,10 @@ struct builder
    /// throws exception if not possible
    static
    void resolve_all_symbols(model::package& root);
+   
+   /// sort all types within the given package recursively
+   static
+   void sort_types(model::package& pkg);
 };
 
 

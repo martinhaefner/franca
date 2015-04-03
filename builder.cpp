@@ -760,5 +760,9 @@ void franca::builder::parse_and_build(model::package& root, const char* franca_f
       (void)franca::builder::build(root, doc.second, doc.first);
    });
    
+   // resolve 'forward' decls
    franca::builder::resolve_all_symbols(root);   
+      
+   // sort types within type collections based on dependencies
+   franca::builder::sort_types(root);
 }

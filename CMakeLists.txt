@@ -20,9 +20,6 @@ include_directories(/usr/include/python2.7)
 add_library(franca SHARED
    parser.cpp
    builder.cpp
-   model.cpp   
+   model.cpp 
+   sorter.cpp  
 )
-
-
-add_executable(sorter sorter.cpp)
-target_link_libraries(sorter franca)

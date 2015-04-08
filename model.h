@@ -461,8 +461,8 @@ struct package : named_element, parented<package>
       return *parent_;
    }
       
-   ///@return a reference to the newly insered package
-   package& add_package(const package& pck);
+   ///@return a reference to the newly insered or already available package
+   package& add_package(const std::string& packagename);
    
    interface& add_interface(const interface& iface);
    

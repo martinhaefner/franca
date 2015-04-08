@@ -101,7 +101,8 @@ BOOST_PYTHON_MODULE(franca)
    
    class_<fm::type>("type", no_init)
       .def("name", &fm::type::name)
-      .def("fqn", &fm::type::fqn)      
+      .def("fqn", &fm::type::fqn)
+      .def("type_id", &fm::type::type_id)      
    ;
    
    class_<fm::typedef_, bases<fm::type> >("typedef", no_init)      

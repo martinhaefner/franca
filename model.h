@@ -87,6 +87,9 @@ struct type : named_element, parented<type>
    
    virtual ~type();
    
+   /// uniquely identifying type id string with all typedefs resolved
+   virtual std::string type_id() const;
+   
    bool operator<(const type& rhs) const;
    
    typecollection* parent_;
@@ -185,6 +188,8 @@ struct union_ : struct_
    {
       // NOOP
    }
+   
+   std::string type_id() const;
 };
 
 
@@ -196,6 +201,8 @@ struct typedef_ : type
    {
       // NOOP
    }
+   
+   std::string type_id() const;
    
    type* real_type_;
 };
@@ -210,6 +217,8 @@ struct array : type
       // NOOP
    }
    
+   std::string type_id() const;
+   
    type* element_type_;
 };
 
@@ -223,6 +232,8 @@ struct map : type
    {
       // NOOP
    }
+   
+   std::string type_id() const;
    
    type* key_type_;
    type* value_type_;

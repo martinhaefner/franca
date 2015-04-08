@@ -1,5 +1,7 @@
 #include "model.h"
 
+#include <sstream>
+
 
 namespace franca
 {
@@ -44,9 +46,51 @@ type::~type()
 }
 
 
+std::string type::type_id() const
+{
+   return name_;
+}
+
+
 bool type::operator<(const type& rhs) const
 {
    return name_ < rhs.name_;
+}
+
+
+std::string union_::type_id() const
+{
+   std::ostringstream os;
+   
+   os << "union<";
+   std::for_each(members_.begin(), members_.end()-1, [&os](const member_type& m){ os << m.first->type_id() << ","; });
+   os << members_.back().first->type_id() << ">";
+   
+   return os.str();
+}
+
+
+std::string array::type_id() const
+{
+   std::ostringstream os;
+   os << "array<" << element_type_->type_id() << ">";
+   
+   return os.str();
+}
+
+
+std::string map::type_id() const
+{
+   std::ostringstream os;
+   os << "map<" << key_type_->type_id() << "," << value_type_->type_id() << ">";
+   
+   return os.str();
+}
+
+
+std::string typedef_::type_id() const
+{
+   return real_type_->type_id();
 }
 
 

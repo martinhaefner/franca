@@ -11,7 +11,7 @@ setup(name="PackageName",
       Extension("franca", ["python_binding.cpp"], 
          libraries = ["boost_python", "franca"],
          library_dirs = [getcwd() + "/build"],
-         extra_compile_args = ["-std=c++11"]
+         extra_compile_args = ["-std=c++11","-Wno-sign-compare"]
       )
    ]
 )

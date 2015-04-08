@@ -13,9 +13,10 @@ namespace fm = franca::model;
 namespace /* anonymous */
 {
    
-// forward decl
+// forward decls
 fm::type* internal_resolve_unresolved(fm::type*, fm::typecollection&);
-   
+void parse_recursive(std::vector<fp::document>& docs, const char* franca_file);
+
    
 /**
  * placeholder during model generation if requested type is not yet
@@ -207,8 +208,6 @@ void internal_resolve_unresolved(fm::package& pack)
    
    std::for_each(pack.packages_.begin(), pack.packages_.end(), [](fm::package& pck){ internal_resolve_unresolved(pck); });
 }
-
-}   // namespace
 
 
 // ---------------------------------------------------------------------
@@ -578,6 +577,42 @@ struct package_builder : public boost::static_visitor<void>
 };
 
 
+struct import_visitor : public boost::static_visitor<void>
+{
+   import_visitor(std::vector<fp::document>& docs)
+    : docs_(docs)
+   {
+      // NOOP
+   }
+   
+   void operator()(const fp::namespace_import& import) const
+   {
+      parse_recursive(docs_, import.file_.c_str());
+   }
+   
+   void operator()(const std::string& filename) const
+   {
+      parse_recursive(docs_, filename.c_str());
+   }
+   
+   std::vector<fp::document>& docs_;
+};
+
+
+void parse_recursive(std::vector<fp::document>& docs, const char* franca_file)
+{
+   fp::document result = fp::parse(franca_file);
+   docs.push_back(result);
+   
+   std::for_each(result.imports_.begin(), result.imports_.end(), [&docs](const fp::import_type& i){
+      boost::apply_visitor(import_visitor(docs), i);
+   });
+}
+
+
+}   // namespace
+
+
 // ---------------------------------------------------------------------
 
 
@@ -609,8 +644,12 @@ void franca::builder::resolve_all_symbols(model::package& root)
 /*static*/
 void franca::builder::parse_and_build(model::package& root, const char* franca_file)
 {
-   fp::document doc = fp::parse(franca_file);
-      
-   (void)franca::builder::build(root, doc);
+   std::vector<fp::document> docs;
+   parse_recursive(docs, franca_file);
+   
+   std::for_each(docs.begin(), docs.end(), [&root](const fp::document& doc){
+      (void)franca::builder::build(root, doc);
+   });
+   
    franca::builder::resolve_all_symbols(root);   
 }

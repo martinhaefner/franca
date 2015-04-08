@@ -22,7 +22,7 @@ def namespaces_open(self):
    p = self;
    
    while not p.is_root() :
-      rc = "namespace " + p.name + " {\n" + rc
+      rc = "namespace " + p.name() + " {\n" + rc
       p = p.package()
       
    return rc
@@ -34,7 +34,7 @@ def namespaces_close(self):
    p = self;
    
    while not p.is_root() :
-      rc += "}   // namespace " + p.name + "\n"
+      rc += "}   // namespace " + p.name() + "\n"
       p = p.package()
       
    return rc
@@ -45,32 +45,46 @@ franca.package.namespaces_close = MethodType(namespaces_close, None, franca.pack
    
 
 # extend type
-intrinsic_types = [ 'Int32', 'Int64', 'Float' ]
+intrinsic_types = [ 'UInt8', 'UInt16', 'UInt32', 'UInt64', 'Int8', 'Int16', 'Int32', 'Int64', 'Float' ]
 
 intrinsic_types_mapping = { 
-   'Int32':'int', 
-   'Int64':'int64_t', 
-   'Float':'double'
+   'UInt8' :'unsigned char', 
+   'UInt16':'unsigned short',
+   'UInt32':'unsigned int', 
+   'UInt64':'unsigned int64_t',
+   'Int8'  :'signed char', 
+   'Int16' :'short',
+   'Int32' :'int', 
+   'Int64' :'int64_t', 
+   'Float' :'double'
 }
 
-def in_signature(self) :
-   if self.name in intrinsic_types :
-      return intrinsic_types_mapping[self.name]
-   elif self.name == "String" :      
-      return "const std::string&"
+
+def cpp_type(self) :
+   if self.name() in intrinsic_types :
+      return intrinsic_types_mapping[self.name()]
+   elif self.name() == "String" :      
+      return "std::string"
    else :
-      return "const " + self.name + "&"
+      return self.name()
+   
+   
+franca.type.cpp_type = MethodType(cpp_type, None, franca.type);
+
+
+def in_signature(self) :
+   if self.name() in intrinsic_types :
+      return self.cpp_type()
+   else :
+      return "const " + self.cpp_type() + "&"
 
 
 def out_signature(self) :
-   if self.name in intrinsic_types :
-      return intrinsic_types_mapping[self.name] + "&"
-   else :
-      return self.name + "&"
+   return self.cpp_type() + "&"
 
    
 franca.type.in_signature  = MethodType(in_signature, None, franca.type);
-franca.type.out_signature  = MethodType(out_signature, None, franca.type);
+franca.type.out_signature = MethodType(out_signature, None, franca.type);
    
 
 # extend argument list
@@ -78,7 +92,7 @@ def for_method_decl_in(self) :
    rc = ""
    
    for i in range(0, len(self)) :
-      rc += self[i].type().in_signature() + " " + self[i].name 
+      rc += self[i].type().in_signature() + " " + self[i].name() + "_in"
       if i < len(self)-1 :
          rc += ", "
 
@@ -89,7 +103,7 @@ def for_method_decl_out(self) :
    rc = ""
    
    for i in range(0, len(self)) :
-      rc += self[i].type().out_signature() + " " + self[i].name 
+      rc += self[i].type().out_signature() + " " + self[i].name() + "_out" 
       if i < len(self)-1 :
          rc += ", "
          

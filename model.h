@@ -189,6 +189,15 @@ struct union_ : struct_
       // NOOP
    }
    
+   inline
+   struct_& base()
+   {
+      if (!has_base())
+         throw std::runtime_error("no baseclass provided");
+         
+      return *dynamic_cast<union_*>(base_);
+   }
+   
    std::string type_id() const;
 };
 
@@ -203,6 +212,12 @@ struct typedef_ : type
    }
    
    std::string type_id() const;
+   
+   inline
+   type& real_type() const
+   {
+      return *real_type_;
+   }
    
    type* real_type_;
 };
@@ -219,6 +234,12 @@ struct array : type
    
    std::string type_id() const;
    
+   inline
+   const type& element_type() const
+   {
+      return *element_type_;
+   }
+   
    type* element_type_;
 };
 
@@ -234,6 +255,18 @@ struct map : type
    }
    
    std::string type_id() const;
+   
+   inline
+   const type& key_type() const
+   {
+      return *key_type_;
+   }
+   
+   inline
+   const type& value_type() const
+   {
+      return *value_type_;
+   }
    
    type* key_type_;
    type* value_type_;

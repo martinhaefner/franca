@@ -61,7 +61,9 @@ bool is_keyword(const std::string& token)
       "typedef",
       "is",
       "major",
-      "minor"
+      "minor",
+      "import",
+      "model"
    });
    
    return keywords.find(token) != keywords.end();   
@@ -301,6 +303,7 @@ BOOST_FUSION_ADAPT_STRUCT(
 BOOST_FUSION_ADAPT_STRUCT(
     fp::document,
     (std::vector<std::string>, package_)
+    (std::vector<fp::import_type>, imports_)
     (std::vector<fp::doc_item_type>, parseitems_)
 )
 
@@ -316,6 +319,13 @@ BOOST_FUSION_ADAPT_STRUCT(
    fp::array,
    (std::string, name_)
    (std::string, type_)
+)
+
+
+BOOST_FUSION_ADAPT_STRUCT(
+   fp::namespace_import,
+   (std::vector<std::string>, items_)
+   (std::string, file_)
 )
 
 
@@ -451,7 +461,20 @@ struct grammar : qi::grammar<IteratorT, fp::document(), ascii::space_type>
                    | typedef_ )[_pass = phx::bind(&fp::typecollection::eval, _val, qi::_1)]
             >> '}';
             
-      franca_ %= package_ >> *( interface_ | typecollection_ )[_pass = phx::bind(&fp::document::eval, _val, qi::_1)];
+      model_import_ %= 
+         lit('"') >> lexeme[+(char_ - '"')] >> '"';
+         
+      namespace_import_ %=
+         lexeme[+char_("a-zA-Z0-9_*") % '.'] >> "from" >> lit('"') >> lexeme[+(char_ - '"')] >> '"';
+         
+      import_ %=
+         lit("import") >> ( model_import_ | namespace_import_ );
+      
+      franca_ %= 
+         package_ 
+            >> *import_
+            >> *( interface_ 
+             | typecollection_ )[_pass = phx::bind(&fp::document::eval, _val, qi::_1)];
       
       package_.name("package");
       interface_.name("interface");
@@ -492,6 +515,9 @@ struct grammar : qi::grammar<IteratorT, fp::document(), ascii::space_type>
    qi::rule<IteratorT, fp::array(),                     ascii::space_type> array_;
    qi::rule<IteratorT, fp::map(),                       ascii::space_type> map_;
    qi::rule<IteratorT, fp::typedef_(),                  ascii::space_type> typedef_;
+   qi::rule<IteratorT, std::string(),                   ascii::space_type> model_import_;
+   qi::rule<IteratorT, fp::namespace_import(),          ascii::space_type> namespace_import_;
+   qi::rule<IteratorT, fp::import_type(),               ascii::space_type> import_;
 };
 
 

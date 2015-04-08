@@ -3,8 +3,8 @@ package my.test
    
 import "base.fidl"
       
-      
-interface Hello 
+// my first interface      
+interface /* my first interface */ Hello 
 {
    version { major 1 minor 2 }
 

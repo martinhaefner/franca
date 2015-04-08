@@ -191,12 +191,23 @@ package& package::root()
 }   
 
 
-package& package::add_package(const package& pck)
+package& package::add_package(const std::string& packagename)
 {      
-   packages_.push_back(pck);
-   packages_.back().parent_ = this;
+   auto iter = std::find_if(packages_.begin(), packages_.end(), [&packagename](const package& pck){
+      return pck.name() == packagename;
+   });
    
-   return packages_.back();
+   if (iter != packages_.end())
+   {
+      return *iter;
+   }
+   else
+   {
+      packages_.push_back(package(packagename));
+      packages_.back().parent_ = this;
+   
+      return packages_.back();
+   }
 }
 
 

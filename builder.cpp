@@ -160,17 +160,17 @@ void internal_resolve_unresolved_tc(fm::typecollection& coll)
          fm::map* m;
       } u;       
       
-      if ((u.s = dynamic_cast<fm::struct_*>(t)) != 0)      
+      if ((u.u = dynamic_cast<fm::union_*>(t)) != 0)      
+      {                                 
+         internal_resolve_unresolved(*u.u);                   
+      }
+      else if ((u.s = dynamic_cast<fm::struct_*>(t)) != 0)      
       {      
          internal_resolve_unresolved(*u.s);             
       }
       else if ((u.e = dynamic_cast<fm::enumeration*>(t)) != 0)      
       {                                 
          internal_resolve_unresolved(*u.e);                   
-      }       
-      else if ((u.u = dynamic_cast<fm::union_*>(t)) != 0)      
-      {                                 
-         internal_resolve_unresolved(*u.u);                   
       }       
       else if ((u.t = dynamic_cast<fm::typedef_*>(t)) != 0)      
       {                                 
@@ -622,8 +622,7 @@ fm::package& franca::builder::build(fm::package& root, const fp::document& parse
    fm::package* parent = &root;
       
    std::for_each(parsetree.package_.begin(), parsetree.package_.end(), [&parent](const std::string& str) {
-      fm::package pck(str);
-      parent = &parent->add_package(pck);      
+      parent = &parent->add_package(str);      
    });
    
    std::for_each(parsetree.parseitems_.begin(), parsetree.parseitems_.end(), [parent]( const fp::doc_item_type& item) {

@@ -209,7 +209,15 @@ struct typecollection
 };
 
 
+struct namespace_import
+{
+   std::vector<std::string> items_;
+   std::string file_;
+};
+
+
 typedef boost::variant<interface, typecollection> doc_item_type;
+typedef boost::variant<std::string, namespace_import> import_type;
 
 
 struct document
@@ -217,6 +225,7 @@ struct document
    bool eval(const doc_item_type& new_item);
    
    std::vector<std::string> package_;
+   std::vector<import_type> imports_;
    std::vector<doc_item_type> parseitems_;
 };
 

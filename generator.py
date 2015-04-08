@@ -1,12 +1,17 @@
 from wheezy.template.engine import Engine
 from wheezy.template.ext.core import CoreExtension
 from wheezy.template.loader import FileLoader
+from types import MethodType
 
 import sys
 import os
-from types import MethodType
+import platform
 
-sys.path.append(os.getcwd() + "/build/lib.linux-i686-2.7")
+# set path to franca module before import
+sys.path.append(os.getcwd() + "/build/lib." 
+   + platform.system().lower() + "-"
+   + platform.machine() + "-" 
+   + ".".join(platform.python_version_tuple()[0:2]))
 
 import franca
 
@@ -37,7 +42,9 @@ def namespaces_close(self):
 
 franca.package.namespaces_open  = MethodType(namespaces_open, None, franca.package);
 franca.package.namespaces_close = MethodType(namespaces_close, None, franca.package);
+   
 
+# extend type
 intrinsic_types = [ 'Int32', 'Int64', 'Float' ]
 
 intrinsic_types_mapping = { 
@@ -45,9 +52,7 @@ intrinsic_types_mapping = {
    'Int64':'int64_t', 
    'Float':'double'
 }
-   
 
-# extend type
 def in_signature(self) :
    if self.name in intrinsic_types :
       return intrinsic_types_mapping[self.name]
@@ -95,16 +100,7 @@ franca.arg_vector.for_method_decl_in  = MethodType(for_method_decl_in, None, fra
 franca.arg_vector.for_method_decl_out = MethodType(for_method_decl_out, None, franca.arg_vector);
 
 
-def list_args(list) :
-   rc = ""
-   
-   for i in range(0, len(list)) :
-      rc += list[i].type().name + " " + list[i].name 
-      if i < len(list)-1 :
-         rc += ", "
-      
-   return rc
-
+# ### START of main program ############################################ 
 
 # load template
 searchpath = ['.']
@@ -114,7 +110,6 @@ engine = Engine(
     extensions=[CoreExtension()]
 )
 
-engine.global_vars.update({'list_args':list_args})
 template = engine.get_template('client_template.hpp')
 
 # load franca

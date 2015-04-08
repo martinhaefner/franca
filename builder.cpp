@@ -1,15 +1,13 @@
 #include "builder.h"
 
 #include <memory>
+#include <sstream>
 
 #include "parser.h"
 
 
 namespace fp = franca::parser;
 namespace fm = franca::model;
-
-
-// FIXME implement duplicate checks on union types (which is not done by the parser)
 
 
 namespace /* anonymous */
@@ -30,6 +28,15 @@ struct unresolved : fm::type
    {
       // NOOP
    }
+   
+   
+   std::string type_id() const
+   {
+      std::ostringstream os;
+      os << "unresolved<" << name() << ">";
+      
+      return os.str();
+   }
 };
 
 
@@ -41,8 +48,22 @@ void internal_resolve_unresolved(fm::enumeration& e)
 
 void internal_resolve_unresolved(fm::union_& s)
 {   
-   std::for_each(s.members_.begin(), s.members_.end(), [&s](std::pair<fm::type*, std::string>& m){ m.first = internal_resolve_unresolved(m.first, *s.parent_); });   
-      
+   std::for_each(s.members_.begin(), s.members_.end(), [&s](fm::union_::member_type& m){ 
+      unresolved* udef = dynamic_cast<unresolved*>(m.first);
+      if (udef)
+      {
+         fm::type* real = internal_resolve_unresolved(m.first, *s.parent_); 
+         
+         // check for duplicate type within union
+         if (std::find_if(s.members_.begin(), s.members_.end(), [real, &m](const fm::union_::member_type& it) {
+            return &m == &it ? false : real->type_id() == it.first->type_id();
+         }) != s.members_.end())
+            throw std::runtime_error("union type may not contain same type multiple times");
+            
+         m.first = real;
+      }
+   });   
+
    s.base_ = internal_resolve_unresolved(s.base_, *s.parent_);   
 }
 
@@ -68,7 +89,7 @@ void internal_resolve_unresolved(fm::map& m)
 
 void internal_resolve_unresolved(fm::struct_& s)
 {   
-   std::for_each(s.members_.begin(), s.members_.end(), [&s](std::pair<fm::type*, std::string>& m){ m.first = internal_resolve_unresolved(m.first, *s.parent_); });   
+   std::for_each(s.members_.begin(), s.members_.end(), [&s](fm::struct_::member_type& m){ m.first = internal_resolve_unresolved(m.first, *s.parent_); });   
       
    s.base_ = internal_resolve_unresolved(s.base_, *s.parent_);   
 }
@@ -80,7 +101,7 @@ fm::type* internal_resolve_unresolved(fm::type* t, fm::typecollection& context)
    {
       unresolved* udef = dynamic_cast<unresolved*>(t);
       
-      if (udef != 0)
+      if (udef)
       {   
          fm::type* rc = context.resolve(udef->name());
          
@@ -233,7 +254,6 @@ struct method_error_builder : public boost::static_visitor<fm::enumeration*>
       // iterate over all enum values
       for (auto iter = err.values_.begin(); iter != err.values_.end(); ++iter)
       {
-         // FIXME check value - maybe use set instead here!
          // if can be resolved add the element to the struct
          e->enumerators_.push_back(fm::enumerator(iter->name_, iter->value_));         
       }
@@ -316,7 +336,6 @@ struct typecollection_builder : public boost::static_visitor<void>
       // iterate over all enum values
       for (auto iter = e.values_.begin(); iter != e.values_.end(); ++iter)
       {
-         // FIXME check value - maybe use set instead here!
          // if can be resolved add the element to the struct
          new_e->enumerators_.push_back(fm::enumerator(iter->name_, iter->value_));         
       }
@@ -377,17 +396,26 @@ struct typecollection_builder : public boost::static_visitor<void>
          new_s->base_ = base;         
       }
       
-      // iterate over all elements of struct. 
+      // iterate over all elements of union. 
       for (auto iter = s.values_.begin(); iter != s.values_.end(); ++iter)
-      {         
+      {
          // resolve element
          fm::type* t = coll_.resolve(iter->type_);
-         if (!t)             
+         if (t)
+         {             
+            if (std::find_if(new_s->members_.begin(), new_s->members_.end(), [t](const fm::union_::member_type& m) {
+               return t->type_id() == m.first->type_id();
+            }) != new_s->members_.end())
+               throw std::runtime_error("union type may not contain same type multiple times");
+         }
+         else
             t = new unresolved(iter->type_);            
-                     
-         // if can be resolved add the element to the struct
+                   
          new_s->members_.push_back(std::make_pair(t, iter->name_));
       }
+      
+      if (new_s->members_.size() == 0)
+         throw std::runtime_error("empty union not allowed");
    
       // keep it
       new_s.release();

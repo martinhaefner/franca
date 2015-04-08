@@ -24,6 +24,7 @@ using boost::spirit::qi::int_;
 using boost::spirit::qi::hex;
 using boost::spirit::qi::_val;
 using boost::spirit::qi::_pass;
+using boost::spirit::qi::eol;
 
 namespace qi = boost::spirit::qi;
 namespace ascii = boost::spirit::ascii;
@@ -347,9 +348,13 @@ BOOST_FUSION_ADAPT_STRUCT(
 #define inargs(where)    (lit("in") >>  '{' >> *arg_[_pass = phx::bind(&fp::where::eval_in,  _val, qi::_1)] >> '}') 
 #define outargs(where)   (lit("out") >> '{' >> *arg_[_pass = phx::bind(&fp::where::eval_out, _val, qi::_1)] >> '}')      
 
+#define SKIPPER_PARSE_PHRASE (ascii::space | "//" >> *(char_ - eol) >> eol | "/*" >> *(char_ - "*/") >> "*/")
+
+typedef BOOST_TYPEOF(SKIPPER_PARSE_PHRASE) skipper_type;
+
 
 template <typename IteratorT>
-struct grammar : qi::grammar<IteratorT, fp::document(), ascii::space_type>
+struct grammar : qi::grammar<IteratorT, fp::document(), skipper_type>
 {
    grammar() : grammar::base_type(franca_)
    {   
@@ -383,13 +388,15 @@ struct grammar : qi::grammar<IteratorT, fp::document(), ascii::space_type>
             
       broadcast_ %=
          lit("broadcast") >> identifier
-            >> '{' >> -outargs(broadcast) >> '}';
+            >> '{' 
+               >> -outargs(broadcast) 
+            >> '}';
       
       extended_error_ %= 
          -( lit("extends") >> type_reference ) 
-         >> '{' 
-            >> *enumeration_decl_[_pass = phx::bind(&fp::extended_error::eval, _val, qi::_1)]
-         >> '}';         
+            >> '{' 
+               >> *enumeration_decl_[_pass = phx::bind(&fp::extended_error::eval, _val, qi::_1)]
+            >> '}';         
          
       errors_ %= lit("error") 
          >> type_reference | extended_error_;
@@ -494,30 +501,30 @@ struct grammar : qi::grammar<IteratorT, fp::document(), ascii::space_type>
       );
    }
       
-   qi::rule<IteratorT, fp::document(),                  ascii::space_type> franca_;
-   qi::rule<IteratorT, std::vector<std::string>(),      ascii::space_type> package_;
-   qi::rule<IteratorT, fp::interface(),                 ascii::space_type> interface_;
-   qi::rule<IteratorT, fp::version(),                   ascii::space_type> version_;
-   qi::rule<IteratorT, fp::method(),                    ascii::space_type> method_;
-   qi::rule<IteratorT, fp::fire_and_forget_method(),    ascii::space_type> fireforget_method_;
-   qi::rule<IteratorT, fp::broadcast(),                 ascii::space_type> broadcast_;
-   qi::rule<IteratorT, fp::arg(),                       ascii::space_type> arg_;
-   qi::rule<IteratorT, fp::typecollection(),            ascii::space_type> typecollection_;
-   qi::rule<IteratorT, fp::attribute(),                 ascii::space_type> attribute_;
-   qi::rule<IteratorT, fp::enumeration(),               ascii::space_type> enumeration_;
-   qi::rule<IteratorT, fp::enum_value(),                ascii::space_type> enumeration_decl_;
-   qi::rule<IteratorT, int(),                           ascii::space_type> enumerator_value_;
-   qi::rule<IteratorT, fp::extended_error(),            ascii::space_type> extended_error_;
-   qi::rule<IteratorT, fp::method_error(),              ascii::space_type> errors_;
-   qi::rule<IteratorT, fp::struct_entry(),              ascii::space_type> structentry_;   
-   qi::rule<IteratorT, fp::struct_(),                   ascii::space_type> structure_;   
-   qi::rule<IteratorT, fp::union_(),                    ascii::space_type> union_;   
-   qi::rule<IteratorT, fp::array(),                     ascii::space_type> array_;
-   qi::rule<IteratorT, fp::map(),                       ascii::space_type> map_;
-   qi::rule<IteratorT, fp::typedef_(),                  ascii::space_type> typedef_;
-   qi::rule<IteratorT, std::string(),                   ascii::space_type> model_import_;
-   qi::rule<IteratorT, fp::namespace_import(),          ascii::space_type> namespace_import_;
-   qi::rule<IteratorT, fp::import_type(),               ascii::space_type> import_;
+   qi::rule<IteratorT, fp::document(),                  skipper_type> franca_;
+   qi::rule<IteratorT, std::vector<std::string>(),      skipper_type> package_;
+   qi::rule<IteratorT, fp::interface(),                 skipper_type> interface_;
+   qi::rule<IteratorT, fp::version(),                   skipper_type> version_;
+   qi::rule<IteratorT, fp::method(),                    skipper_type> method_;
+   qi::rule<IteratorT, fp::fire_and_forget_method(),    skipper_type> fireforget_method_;
+   qi::rule<IteratorT, fp::broadcast(),                 skipper_type> broadcast_;
+   qi::rule<IteratorT, fp::arg(),                       skipper_type> arg_;
+   qi::rule<IteratorT, fp::typecollection(),            skipper_type> typecollection_;
+   qi::rule<IteratorT, fp::attribute(),                 skipper_type> attribute_;
+   qi::rule<IteratorT, fp::enumeration(),               skipper_type> enumeration_;
+   qi::rule<IteratorT, fp::enum_value(),                skipper_type> enumeration_decl_;
+   qi::rule<IteratorT, int(),                           skipper_type> enumerator_value_;
+   qi::rule<IteratorT, fp::extended_error(),            skipper_type> extended_error_;
+   qi::rule<IteratorT, fp::method_error(),              skipper_type> errors_;
+   qi::rule<IteratorT, fp::struct_entry(),              skipper_type> structentry_;   
+   qi::rule<IteratorT, fp::struct_(),                   skipper_type> structure_;   
+   qi::rule<IteratorT, fp::union_(),                    skipper_type> union_;   
+   qi::rule<IteratorT, fp::array(),                     skipper_type> array_;
+   qi::rule<IteratorT, fp::map(),                       skipper_type> map_;
+   qi::rule<IteratorT, fp::typedef_(),                  skipper_type> typedef_;
+   qi::rule<IteratorT, std::string(),                   skipper_type> model_import_;
+   qi::rule<IteratorT, fp::namespace_import(),          skipper_type> namespace_import_;
+   qi::rule<IteratorT, fp::import_type(),               skipper_type> import_;
 };
 
 
@@ -546,7 +553,7 @@ fp::document fp::parse(const char* filename)
    std::string::const_iterator iter = str.begin();
    std::string::const_iterator end = str.end();
 
-   if (!qi::phrase_parse(iter, end, grammar, ascii::space, doc) || iter != end)
+   if (!qi::phrase_parse(iter, end, grammar, SKIPPER_PARSE_PHRASE, doc) || iter != end)
       throw std::runtime_error("parser failure");
       
    return doc;

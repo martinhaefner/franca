@@ -12,6 +12,7 @@
 #include <functional>
 #include <iostream>
 #include <fstream>
+#include <sstream>
 #include <set>
 
 #include "parser.h"
@@ -469,7 +470,7 @@ struct grammar : qi::grammar<IteratorT, fp::document(), skipper_type>
             >> '}';
             
       model_import_ %= 
-         lit('"') >> lexeme[+(char_ - '"')] >> '"';
+         -lit("model") >> lit('"') >> lexeme[+(char_ - '"')] >> '"';
          
       namespace_import_ %=
          lexeme[+char_("a-zA-Z0-9_*") % '.'] >> "from" >> lit('"') >> lexeme[+(char_ - '"')] >> '"';
@@ -531,10 +532,21 @@ struct grammar : qi::grammar<IteratorT, fp::document(), skipper_type>
 // ---------------------------------------------------------------------
 
 
-fp::document fp::parse(const char* filename)
+fp::document fp::parse(const char* filename, const std::vector<std::string>& includes)
 {
    std::ifstream in(filename, std::ios_base::in);
 
+   if (!in && filename[0] != '/')    // only on relative paths
+   {
+      for (auto iter = includes.begin(); iter != includes.end() && !in; ++iter)
+      {
+         std::ostringstream oss;
+         oss << *iter << '/' << filename;
+         
+         in.open(oss.str().c_str(), std::ios_base::in);
+      }
+   }
+   
    if (!in)
       throw std::runtime_error("file not found");
    

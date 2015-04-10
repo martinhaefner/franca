@@ -15,6 +15,10 @@ struct builder
 {
    /// @param root the (empty) root to parse the file to
    static 
+   void parse_and_build(model::package& root, const char* franca_file, const std::vector<std::string>& includes);
+   
+   /// @param root the (empty) root to parse the file to
+   static 
    void parse_and_build(model::package& root, const char* franca_file);
    
    /// @return the currently parsed package

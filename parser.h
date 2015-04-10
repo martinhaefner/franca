@@ -230,7 +230,7 @@ struct document
 };
 
 
-document parse(const char* filename);
+document parse(const char* filename, const std::vector<std::string>& includes);
 
 }   // parser
 

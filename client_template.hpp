@@ -5,6 +5,9 @@
 #define @{interface.fqn('_').upper()}_HPP
 
 
+@{interface.dependent_includes()}
+
+
 @{interface.package().namespaces_open()}
 
 class @{interface.name()}Client : public Client

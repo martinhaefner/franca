@@ -2,6 +2,7 @@ from wheezy.template.engine import Engine
 from wheezy.template.ext.core import CoreExtension
 from wheezy.template.loader import FileLoader
 from types import MethodType
+from sets import Set
 
 import sys
 import os
@@ -42,7 +43,36 @@ def namespaces_close(self):
 
 franca.package.namespaces_open  = MethodType(namespaces_open, None, franca.package);
 franca.package.namespaces_close = MethodType(namespaces_close, None, franca.package);
+
+
+def collectIncludes(includes, typecol):
+   for tc in typecol.dependencies:      
+      includes.append("#include \"" + tc.fqn("/") + ".hpp\"\n")
+      collectIncludes(includes, tc)
    
+
+# extend interface
+def dependent_includes(self):
+   includes = []
+   
+   for tc in self.dependencies:      
+      includes.append("#include \"" + tc.fqn("/") + ".hpp\"\n")
+      collectIncludes(includes, tc)
+   
+   # remove doubles
+   rc = []   
+   [rc.append(x) for x in includes if x not in rc]   
+   
+   ret = ""
+   
+   for e in rc:
+      ret += e
+   
+   return ret
+   
+   
+franca.interface.dependent_includes = MethodType(dependent_includes, None, franca.interface);
+
 
 # extend type
 intrinsic_types = [ 'UInt8', 'UInt16', 'UInt32', 'UInt64', 'Int8', 'Int16', 'Int32', 'Int64', 'Float' ]

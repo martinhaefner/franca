@@ -100,6 +100,9 @@ struct type : named_element, parented<type>
       return fqn(".") == rhs.fqn(".");   // type always depends on itself
    }
    
+   /// @return a list of typecollections this types refers to
+   virtual std::set<const typecollection*> refers_to() const;
+   
    typecollection* parent_;
 };
 
@@ -162,6 +165,21 @@ struct struct_ : type
       return false;
    }
    
+   std::set<const typecollection*> refers_to() const
+   {
+      std::set<const typecollection*> rc;
+      
+      if (base_ && base_->parent_ && base_->parent_ != parent_)      
+         rc.insert(base_->parent_);      
+      
+      std::for_each(members_.begin(), members_.end(), [&rc, this](const member_type& mem){
+         if (mem.first->parent_ && mem.first->parent_ != this->parent_)
+            rc.insert(mem.first->parent_);              
+      });      
+      
+      return rc;
+   }
+   
    type* base_;
    
    std::vector<member_type> members_;
@@ -215,6 +233,16 @@ struct enumeration : type
       }
          
       return false;
+   }
+   
+   std::set<const typecollection*> refers_to() const
+   {
+      std::set<const typecollection*> rc;
+      
+      if (base_ && base_->parent_ && base_->parent_ != parent_)      
+         rc.insert(base_->parent_);      
+      
+      return rc;
    }
    
    inline
@@ -271,6 +299,16 @@ struct typedef_ : type
       return real_type_->depends(rhs);      
    }
    
+   std::set<const typecollection*> refers_to() const
+   {
+      std::set<const typecollection*> rc;         
+      
+      if (real_type_->parent_ && real_type_->parent_ != parent_)
+         rc.insert(real_type_->parent_);            
+         
+      return rc;
+   }
+   
    inline
    type& real_type() const
    {
@@ -301,6 +339,16 @@ struct array : type
          return true;
          
       return element_type_->depends(rhs);
+   }
+   
+   std::set<const typecollection*> refers_to() const
+   {
+      std::set<const typecollection*> rc;         
+      
+      if (element_type_->parent_)
+         rc.insert(element_type_->parent_);            
+      
+      return rc;
    }
    
    inline
@@ -349,6 +397,19 @@ struct map : type
    const type& value_type() const
    {
       return *value_type_;
+   }
+   
+   std::set<const typecollection*> refers_to() const
+   {
+      std::set<const typecollection*> rc;   
+            
+      if (key_type_->parent_)
+         rc.insert(key_type_->parent_);
+         
+      if (value_type_->parent_)
+         rc.insert(value_type_->parent_);
+      
+      return rc;
    }
    
    type* key_type_;
@@ -500,9 +561,15 @@ struct typecollection : named_element, parented<typecollection>
       return *parent_;
    }
    
+   void add(type& t);
+   
+   void add_dependency(const typecollection* coll);
+   
    // FIXME make this a list of shared_ptr's
    std::vector<type*> types_;    // beware this is polymorphic, therefore we store pointers
    package* parent_;
+   
+   std::vector<const typecollection*> dependencies_;
 };
    
    
@@ -512,7 +579,7 @@ struct interface : typecollection
    
    int major_;
    int minor_;
-   
+      
    std::vector<attribute> attrs_;
    std::vector<method> methods_;
    std::vector<fire_and_forget_method> ff_methods_;

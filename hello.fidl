@@ -38,7 +38,10 @@ interface /* my first interface */ Hello
    
    method shoot fireAndForget
    {
-      in { String str }
+      in { 
+         String str 
+         MyTypes.BStruct b
+      }
    }
 
    

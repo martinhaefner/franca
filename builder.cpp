@@ -131,14 +131,22 @@ fm::type* internal_resolve_unresolved(fm::type* t, fm::typecollection& context)
 
 void internal_resolve_unresolved(fm::attribute& a)
 {
-   a.type_ = internal_resolve_unresolved(a.type_, a.interface_);   
+   a.type_ = internal_resolve_unresolved(a.type_, a.interface_); 
+   a.interface_.add_dependency(a.type_->parent_);
 }
 
 
 void internal_resolve_unresolved(fm::method& m)
 {
-   std::for_each(m.in_.begin(), m.in_.end(), [&m](fm::arg& a){ a.type_ = internal_resolve_unresolved(a.type_, m.get_interface()); });
-   std::for_each(m.out_.begin(), m.out_.end(), [&m](fm::arg& a){ a.type_ = internal_resolve_unresolved(a.type_, m.get_interface()); });
+   std::for_each(m.in_.begin(), m.in_.end(), [&m](fm::arg& a){ 
+      a.type_ = internal_resolve_unresolved(a.type_, m.get_interface()); 
+      m.get_interface().add_dependency(a.type_->parent_);
+   });
+   
+   std::for_each(m.out_.begin(), m.out_.end(), [&m](fm::arg& a){ 
+      a.type_ = internal_resolve_unresolved(a.type_, m.get_interface());       
+      m.get_interface().add_dependency(a.type_->parent_);
+   });
    
    m.errors_ = internal_resolve_unresolved(m.errors_, m.get_interface());
 }
@@ -146,13 +154,19 @@ void internal_resolve_unresolved(fm::method& m)
 
 void internal_resolve_unresolved(fm::fire_and_forget_method& m)
 {
-   std::for_each(m.args_.begin(), m.args_.end(), [&m](fm::arg& a){ a.type_ = internal_resolve_unresolved(a.type_, m.interface_); });
+   std::for_each(m.args_.begin(), m.args_.end(), [&m](fm::arg& a){ 
+      a.type_ = internal_resolve_unresolved(a.type_, m.interface_); 
+      m.interface_.add_dependency(a.type_->parent_);
+   });
 }
 
 
 void internal_resolve_unresolved(fm::broadcast& b)
 {
-   std::for_each(b.args_.begin(), b.args_.end(), [&b](fm::arg& a){ a.type_ = internal_resolve_unresolved(a.type_, b.interface_); });
+   std::for_each(b.args_.begin(), b.args_.end(), [&b](fm::arg& a){ 
+      a.type_ = internal_resolve_unresolved(a.type_, b.interface_);
+      b.interface_.add_dependency(a.type_->parent_);
+   });
 }
 
 
@@ -656,6 +670,7 @@ struct namespace_extraction_visitor : public boost::static_visitor<std::string>
    }   
 };
 
+
 void parse_recursive(std::vector<std::pair<std::string, fp::document> >& docs, const char* franca_file, const std::vector<std::string>& includes, const std::string& filter)
 {
    fp::document result = fp::parse(franca_file, includes);
@@ -764,5 +779,5 @@ void franca::builder::parse_and_build(model::package& root, const char* franca_f
    franca::builder::resolve_all_symbols(root);   
       
    // sort types within type collections based on dependencies
-   franca::builder::sort_types(root);
+   franca::builder::sort_types(root);   
 }

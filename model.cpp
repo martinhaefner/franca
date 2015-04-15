@@ -28,7 +28,7 @@ type::type(const std::string& name, typecollection& parent)
  : named_element(name)
  , parent_(&parent) 
 {
-   parent.types_.push_back(this);
+   parent.add(*this);   
 }
 
 
@@ -55,6 +55,13 @@ std::string type::type_id() const
 bool type::operator<(const type& rhs) const
 {
    return name_ < rhs.name_;
+}
+
+
+std::set<const typecollection*> type::refers_to() const
+{
+   std::set<const typecollection*> rc;
+   return rc;
 }
 
 
@@ -117,6 +124,20 @@ typecollection::typecollection(const std::string& name)
 }
 
 
+void typecollection::add_dependency(const typecollection* coll)
+{
+   if (coll && this != coll)
+   {
+      auto iter = std::find_if(dependencies_.begin(), dependencies_.end(), [coll](const typecollection* tc){
+         return coll == tc;
+      });
+      
+      if (iter == dependencies_.end())
+         dependencies_.push_back(coll);
+   }
+}
+
+
 type* typecollection::resolve(const std::string& name)
 {   
    std::vector<std::string> tokens;
@@ -176,6 +197,12 @@ type* typecollection::resolve(const std::string& name)
    }   
    
    return nullptr;
+}
+
+
+void typecollection::add(type& t)
+{   
+   types_.push_back(&t);
 }
 
 

@@ -148,6 +148,7 @@ void internal_resolve_unresolved(fm::method& m)
       m.get_interface().add_dependency(a.type_->parent_);
    });
    
+   // FIXME need dependency here!
    m.errors_ = internal_resolve_unresolved(m.errors_, m.get_interface());
 }
 
@@ -779,5 +780,5 @@ void franca::builder::parse_and_build(model::package& root, const char* franca_f
    franca::builder::resolve_all_symbols(root);   
       
    // sort types within type collections based on dependencies
-   franca::builder::sort_types(root);   
+   franca::builder::sort_types(root);
 }

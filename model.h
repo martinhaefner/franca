@@ -66,7 +66,6 @@ struct parented
       else
          return this_name;
    }
-      
 
 protected:
 
@@ -579,7 +578,7 @@ struct interface : typecollection
    
    int major_;
    int minor_;
-      
+
    std::vector<attribute> attrs_;
    std::vector<method> methods_;
    std::vector<fire_and_forget_method> ff_methods_;

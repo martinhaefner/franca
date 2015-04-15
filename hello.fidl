@@ -2,7 +2,8 @@ package my.test
    
    
 import my.test.base.my_types from "base.fidl"
-      
+
+
 // my first interface      
 interface /* my first interface */ Hello 
 {

@@ -66,8 +66,7 @@ struct parented
       else
          return this_name;
    }
-
-
+   
 protected:
 
    virtual ~parented()
@@ -90,7 +89,15 @@ struct type : named_element, parented<type>
    /// uniquely identifying type id string with all typedefs resolved
    virtual std::string type_id() const;
    
+   /// trivial ordering by name
    bool operator<(const type& rhs) const;
+   
+   /// allow ordering by internal dependencies
+   /// FIXME move to cpp
+   virtual bool depends(const type& rhs) const
+   {
+      return fqn(".") == rhs.fqn(".");   // type always depends on itself
+   }
    
    typecollection* parent_;
 };
@@ -131,6 +138,29 @@ struct struct_ : type
       return members_;
    }
    
+   bool depends(const type& rhs) const
+   {
+      if (fqn(".") == rhs.fqn("."))
+         return true;
+         
+      if (base_)
+      {
+         if (base_->fqn(".") == rhs.fqn("."))
+            return true;
+            
+         if (base_->depends(rhs))
+            return true;
+      }
+      
+      for(auto iter = members_.begin(); iter != members_.end(); ++iter)
+      {
+         if (iter->first->fqn(".") == rhs.fqn(".") || iter->first->depends(rhs))
+            return true;
+      }
+      
+      return false;
+   }
+   
    type* base_;
    
    std::vector<member_type> members_;
@@ -168,6 +198,22 @@ struct enumeration : type
          throw std::runtime_error("no baseclass provided");
          
       return *dynamic_cast<enumeration*>(base_);
+   }
+   
+   bool depends(const type& rhs) const
+   {
+      if (fqn(".") == rhs.fqn("."))
+         return true;
+         
+      if (base_)
+      {
+         if (base_->fqn(".") == rhs.fqn("."))
+            return true;
+            
+         return base_->depends(rhs);         
+      }
+         
+      return false;
    }
    
    inline
@@ -213,6 +259,17 @@ struct typedef_ : type
    
    std::string type_id() const;
    
+   bool depends(const type& rhs) const
+   {
+      if (fqn(".") == rhs.fqn("."))
+         return true;
+         
+      if (real_type_->fqn(".") == rhs.fqn("."))
+         return true;
+         
+      return real_type_->depends(rhs);      
+   }
+   
    inline
    type& real_type() const
    {
@@ -233,6 +290,17 @@ struct array : type
    }
    
    std::string type_id() const;
+   
+   bool depends(const type& rhs) const
+   {
+      if (fqn(".") == rhs.fqn("."))
+         return true;
+      
+      if (element_type_->fqn(".") == rhs.fqn("."))
+         return true;
+         
+      return element_type_->depends(rhs);
+   }
    
    inline
    const type& element_type() const
@@ -255,6 +323,20 @@ struct map : type
    }
    
    std::string type_id() const;
+   
+   bool depends(const type& rhs) const
+   {
+      if (fqn(".") == rhs.fqn("."))
+         return true;
+         
+      if (key_type_->fqn(".") == rhs.fqn("."))
+         return true;
+         
+      if (value_type_->fqn(".") == rhs.fqn("."))
+         return true;
+         
+      return key_type_->depends(rhs) || value_type_->depends(rhs);
+   }
    
    inline
    const type& key_type() const
@@ -466,6 +548,12 @@ struct package : named_element, parented<package>
    
    interface& add_interface(const interface& iface);
    
+   void add_import(const std::string& import)
+   {
+      if (!import.empty())    
+         imports_.push_back(import);
+   }
+   
    typecollection& add_typecollection(const typecollection& coll);
       
    ///@return 0 if type cannot be found within the model
@@ -473,10 +561,12 @@ struct package : named_element, parented<package>
    type* resolve(IteratorT begin, IteratorT end, const std::string& typecoll, const std::string& type_name);
    
    std::list<typecollection> collections_;
-   std::list<interface> interfaces_;
+   std::list<interface> interfaces_;   
    
    std::list<package> packages_;
    package* parent_;
+   
+   std::vector<std::string> imports_;
 };
 
 
@@ -497,24 +587,34 @@ type* package::resolve(IteratorT begin, IteratorT end, const std::string& typeco
          return iter->resolve(++begin, end, typecoll, type_name);      
    }
    else
-   {      
-      auto iter = std::find_if(collections_.begin(), collections_.end(), [typecoll](const typecollection& coll){ return typecoll == coll.name(); });
-      if (iter != collections_.end())
+   {         
       {
-         auto typeiter = std::find_if(iter->types_.begin(), iter->types_.end(), [type_name](const type* t){ return type_name == t->name(); });
-         if (typeiter != iter->types_.end())
-            return *typeiter;
+         // look into collections
+         
+         auto iter = std::find_if(collections_.begin(), collections_.end(), [typecoll](const typecollection& coll){ return typecoll == coll.name(); });
+         if (iter != collections_.end())
+         {
+            auto typeiter = std::find_if(iter->types_.begin(), iter->types_.end(), [type_name](const type* t){ return type_name == t->name(); });
+            if (typeiter != iter->types_.end())
+               return *typeiter;
+               
+            return nullptr;
+         }
       }
-      else
-      {      
+      
+      {
+         // look into interfaces
+         
          auto iter = std::find_if(interfaces_.begin(), interfaces_.end(), [typecoll](const interface& iface){ return typecoll == iface.name(); });
          if (iter != interfaces_.end())
          {
             auto typeiter = std::find_if(iter->types_.begin(), iter->types_.end(), [type_name](const type* t){ return type_name == t->name(); });
             if (typeiter != iter->types_.end())
                return *typeiter;
-         }
-      }
+               
+            return nullptr;
+         }         
+      }         
    }
    
    return nullptr;   

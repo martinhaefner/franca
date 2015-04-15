@@ -132,9 +132,7 @@ type* typecollection::resolve(const std::string& name)
             
       auto iter2 = std::find_if(types_.begin(), types_.end(), [name](const type* t){ return name == t->name(); });
       if (iter2 != types_.end())      
-         return *iter2;      
-         
-      // FIXME lookup in all imported packages (filter for * or explicit type name)
+         return *iter2;         
    }
    else if (tokens.size() > 1)
    {      
@@ -148,15 +146,33 @@ type* typecollection::resolve(const std::string& name)
       std::string typecoll = *tokens.rbegin();
       tokens.pop_back();
       
-      //std::cout << "Searching for " << type_name << " in collection " << typecoll;
+      //std::cout << "Searching for " << type_name << " in collection " << typecoll << std::endl;
+      
       // namespace lookup
       type* rc = parent_->resolve(tokens.begin(), tokens.end(), typecoll, type_name);      
       
       if (rc != nullptr)         
-         return rc;      
+         return rc;
       
       // root lookup
-      return parent_->root().resolve(tokens.begin(), tokens.end(), typecoll, type_name);                           
+      rc = parent_->root().resolve(tokens.begin(), tokens.end(), typecoll, type_name);                                 
+      
+      if (rc != nullptr)         
+         return rc;
+      
+      // imports lookup      
+      for(auto iter = parent_->imports_.begin(); iter != parent_->imports_.end(); ++iter)
+      {         
+         std::vector<std::string> root_tokens;
+         boost::algorithm::split(root_tokens, *iter, boost::algorithm::is_any_of("."));
+                           
+         std::copy(tokens.begin(), tokens.end(), std::back_inserter(root_tokens));         
+         
+         rc = parent_->root().resolve(root_tokens.begin(), root_tokens.end(), typecoll, type_name);                                 
+         
+         if (rc != nullptr)         
+            return rc;      
+      }
    }   
    
    return nullptr;

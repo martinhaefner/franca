@@ -16,7 +16,15 @@ namespace /* anonymous */
    
 // forward decls
 fm::type* internal_resolve_unresolved(fm::type*, fm::typecollection&);
-void parse_recursive(std::vector<fp::document>& docs, const char* franca_file, const std::vector<std::string>& includes);
+
+void parse_recursive(std::vector<std::pair<std::string, fp::document> >& docs, const char* franca_file, const std::vector<std::string>& includes, const std::string& filter);
+
+
+inline
+int _stl_strncmp(const std::string& s1, const std::string& s2, size_t len)
+{   
+   return s1.compare(0, len, s2, 0, len);
+}
 
    
 /**
@@ -548,40 +556,58 @@ struct interface_builder : typecollection_builder
 
 struct package_builder : public boost::static_visitor<void>
 {
-   package_builder(fm::package& package)
+   package_builder(fm::package& package, const std::string& comparator)
     : package_(package)
+    , comp_(comparator)
+    , pkgname_(package_.fqn("."))
    {
-      // NOOP
+      pkgname_ += ".";
    }
    
    void operator()(const fp::interface& i) const
-   {
-      fm::interface mi(i.name_, i.version_.major_, i.version_.minor_);      
-      fm::interface& rmi = package_.add_interface(mi);
+   {            
+      std::string ifname = pkgname_ + i.name_ 
+         + ".";   // end-of-name recognition
       
-      std::for_each(i.parseitems_.begin(), i.parseitems_.end(), [this,&rmi]( const fp::interface_item_type& item) {
-         boost::apply_visitor(interface_builder(rmi), item);
-      });
+      if (_stl_strncmp(ifname, comp_, std::min(ifname.size(), comp_.size())) == 0)
+      {      
+         fm::interface mi(i.name_, i.version_.major_, i.version_.minor_);      
+         fm::interface& rmi = package_.add_interface(mi);
+         
+         std::for_each(i.parseitems_.begin(), i.parseitems_.end(), [this,&rmi]( const fp::interface_item_type& item) {
+            boost::apply_visitor(interface_builder(rmi), item);
+         });
+      }
    }
    
    void operator()(const fp::typecollection& tc) const
    {
-      fm::typecollection mtc(tc.name_);      
-      fm::typecollection& rmtc = package_.add_typecollection(mtc);
+      std::string tcname = pkgname_ + tc.name_ 
+         + ".";   // end-of-name recognition
       
-      std::for_each(tc.parseitems_.begin(), tc.parseitems_.end(), [this,&rmtc]( const fp::tc_item_type& item) {
-         boost::apply_visitor(typecollection_builder(rmtc), item);
-      });
+      if (_stl_strncmp(tcname, comp_, std::min(tcname.size(), comp_.size())) == 0)
+      {      
+         fm::typecollection mtc(tc.name_);      
+         fm::typecollection& rmtc = package_.add_typecollection(mtc);
+         
+         std::for_each(tc.parseitems_.begin(), tc.parseitems_.end(), [this,&rmtc]( const fp::tc_item_type& item) {
+            boost::apply_visitor(typecollection_builder(rmtc), item);
+         });
+      }
    }
    
    fm::package& package_;
+   
+   // entity filtering
+   std::string comp_;
+   std::string pkgname_;
 };
 
 
 struct import_visitor : public boost::static_visitor<void>
 {
    explicit
-   import_visitor(std::vector<fp::document>& docs, const std::vector<std::string>& includes)
+   import_visitor(std::vector<std::pair<std::string, fp::document> >& docs, const std::vector<std::string>& includes)
     : docs_(docs)
     , includes_(includes)
    {
@@ -590,23 +616,51 @@ struct import_visitor : public boost::static_visitor<void>
    
    void operator()(const fp::namespace_import& import) const
    {
-      parse_recursive(docs_, import.file_.c_str(), includes_);
+      std::ostringstream filter;
+      
+      std::for_each(import.items_.begin(), import.items_.end(), [&filter](const std::string& item){
+         filter << ".";
+         filter << item;         
+      });
+      
+      parse_recursive(docs_, import.file_.c_str(), includes_, filter.str());
    }
    
    void operator()(const std::string& filename) const
    {
-      parse_recursive(docs_, filename.c_str(), includes_);
+      parse_recursive(docs_, filename.c_str(), includes_, "*");
    }
    
-   std::vector<fp::document>& docs_;
+   std::vector<std::pair<std::string, fp::document> >& docs_;
    const std::vector<std::string>& includes_;
 };
 
 
-void parse_recursive(std::vector<fp::document>& docs, const char* franca_file, const std::vector<std::string>& includes)
+struct namespace_extraction_visitor : public boost::static_visitor<std::string>
+{
+   std::string operator()(const fp::namespace_import& import) const
+   {
+      std::ostringstream filter;
+      
+      std::for_each(import.items_.begin(), import.items_.end()-1, [&filter](const std::string& item){
+         filter << ".";
+         filter << item;
+      });
+      
+      return filter.str().substr(1);
+   }
+   
+   std::string operator()(const std::string& filename) const
+   {
+      return "";
+   }   
+};
+
+
+void parse_recursive(std::vector<std::pair<std::string, fp::document> >& docs, const char* franca_file, const std::vector<std::string>& includes, const std::string& filter)
 {
    fp::document result = fp::parse(franca_file, includes);
-   docs.push_back(result);
+   docs.push_back(std::make_pair(filter, result));
 
    if (!result.imports_.empty())   
    {
@@ -636,18 +690,48 @@ void parse_recursive(std::vector<fp::document>& docs, const char* franca_file, c
 
 
 /*static*/ 
-fm::package& franca::builder::build(fm::package& root, const fp::document& parsetree)
-{
-   fm::package* parent = &root;
+fm::package& franca::builder::build(fm::package& root, const fp::document& parsetree, const std::string& filter)
+{   
+   // comparable string - may be empty for full model import
+   std::string fqn_comp = filter;   
+   
+   // must add the "." to distinguish between complete and just parts of package names
+   if (*fqn_comp.rbegin() == '*')
+   {
+      fqn_comp.erase(fqn_comp.end()-1);
+   }
+   else
+      fqn_comp += ".";     // end-of-name recognition 
+         
+   fm::package* parent = &root;   
+            
+   for (auto iter = parsetree.package_.begin(); iter != parsetree.package_.end(); ++iter)
+   {      
+      std::string fqn = parent->fqn(".");
+      fqn += ".";
+      fqn += *iter;  
+      fqn += ".";         // end-of-name recognition 
       
-   std::for_each(parsetree.package_.begin(), parsetree.package_.end(), [&parent](const std::string& str) {
-      parent = &parent->add_package(str);      
+      if (_stl_strncmp(fqn, fqn_comp, std::min(fqn.size(), fqn_comp.size())) == 0)      
+      {
+         parent = &parent->add_package(*iter);            
+      }      
+      else
+         return root;    // nothing more to do      
+   }
+   
+   // add namespace imports
+   std::for_each(parsetree.imports_.begin(), parsetree.imports_.end(), [&parent](const fp::import_type& imp){   
+      parent->add_import(boost::apply_visitor(namespace_extraction_visitor(), imp));
    });
    
-   std::for_each(parsetree.parseitems_.begin(), parsetree.parseitems_.end(), [parent]( const fp::doc_item_type& item) {
-      boost::apply_visitor(package_builder(*parent), item);
-   });
-      
+   if (_stl_strncmp(parent->fqn("."), fqn_comp, std::min(fqn_comp.size(), parent->fqn(".").size())) == 0)
+   {
+      std::for_each(parsetree.parseitems_.begin(), parsetree.parseitems_.end(), [parent, &fqn_comp]( const fp::doc_item_type& item) {
+         boost::apply_visitor(package_builder(*parent, fqn_comp), item);
+      });
+   }      
+   
    return root;
 }
 
@@ -670,12 +754,16 @@ void franca::builder::parse_and_build(model::package& root, const char* franca_f
 /*static*/
 void franca::builder::parse_and_build(model::package& root, const char* franca_file, const std::vector<std::string>& includes)
 {
-   std::vector<fp::document> docs;
-   parse_recursive(docs, franca_file, includes);
+   std::vector<std::pair<std::string, fp::document> > docs;
+   parse_recursive(docs, franca_file, includes, "*");
    
-   std::for_each(docs.begin(), docs.end(), [&root](const fp::document& doc){
-      (void)franca::builder::build(root, doc);
+   std::for_each(docs.begin(), docs.end(), [&root](const std::pair<std::string, fp::document>& doc){
+      (void)franca::builder::build(root, doc.second, doc.first);
    });
    
+   // resolve 'forward' decls
    franca::builder::resolve_all_symbols(root);   
+      
+   // sort types within type collections based on dependencies
+   franca::builder::sort_types(root);
 }

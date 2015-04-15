@@ -1,7 +1,8 @@
 package my.test
    
    
-import "base.fidl"
+import my.test.base.my_types from "base.fidl"
+
       
 // my first interface      
 interface /* my first interface */ Hello 
@@ -56,7 +57,7 @@ typecollection MyBaseTypes
 {
    struct What
    {
-      Int64 w
+      my_types.int32_t w
    }
 }
 
@@ -78,7 +79,7 @@ typecollection MyTypes
    struct BStruct
    {
       MyTypes.AStruct a
-      Int32 i
+      my.test.base.my_types.int32_t i
    }
    
    struct AStruct extends Base

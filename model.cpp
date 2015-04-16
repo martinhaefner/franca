@@ -58,7 +58,7 @@ type::add_typecollection_if(std::set<const typecollection*>& tcoll_set, const ty
 
 std::string type::type_id() const
 {
-   return name_;
+   return fqn(".");
 }
 
 

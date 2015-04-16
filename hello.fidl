@@ -1,7 +1,9 @@
 package my.test
    
+/* Das ist Doku */
    
 import my.test.base.my_types from "base.fidl"
+//import model "base.fidl"
 
 
 // my first interface      
@@ -60,7 +62,7 @@ typecollection MyBaseTypes
 {
    struct What
    {
-      my_types.int32_t w
+      my.test.base.my_types.int32_t w
    }
 }
 

@@ -2,6 +2,7 @@
 
 #include <boost/spirit/include/qi.hpp>
 #include <boost/spirit/include/phoenix.hpp>
+#include <boost/spirit/include/support_line_pos_iterator.hpp>
 
 #include <boost/fusion/include/adapt_struct.hpp>
 #include <boost/fusion/include/at_c.hpp>
@@ -470,7 +471,7 @@ struct grammar : qi::grammar<IteratorT, fp::document(), skipper_type>
             >> '}';
             
       model_import_ %= 
-         -lit("model") >> lit('"') >> lexeme[+(char_ - '"')] >> '"';
+         -lit("model") >> lit('"') >> lexeme[+(char_ - '"')] > '"';
          
       namespace_import_ %=
          lexeme[+char_("a-zA-Z0-9_*") % '.'] >> "from" >> lit('"') >> lexeme[+(char_ - '"')] >> '"';
@@ -488,18 +489,7 @@ struct grammar : qi::grammar<IteratorT, fp::document(), skipper_type>
       interface_.name("interface");
       version_.name("version");  
       method_.name("method");
-            
-      qi::on_error<qi::fail>
-      (
-         franca_,
-         std::cout
-            << phx::val("Error! Expecting ")
-            << qi::_4                               // what failed?
-            << phx::val(" here: \"")
-            << phx::construct<std::string>(qi::_3, qi::_2)   // iterators to error-pos, end
-            << phx::val("\"")
-            << std::endl
-      );
+      model_import_.name("import");            
    }
       
    qi::rule<IteratorT, fp::document(),                  skipper_type> franca_;
@@ -532,6 +522,51 @@ struct grammar : qi::grammar<IteratorT, fp::document(), skipper_type>
 // ---------------------------------------------------------------------
 
 
+template<typename IteratorT>
+size_t get_line(IteratorT begin, IteratorT cur)
+{                 
+   size_t line = 1;
+   
+   while(begin != cur)
+   {
+      switch(*begin)
+      {
+      case '\n':
+         ++line;
+      default:
+         break;
+      }
+      
+      ++begin;
+   }
+   
+   return line;
+}
+
+
+struct printer 
+{
+   typedef boost::spirit::utf8_string string;
+
+   void element(string const& tag, string const& value, int depth) const 
+   {
+      for (int i = 0; i < (depth*4); ++i) 
+         std::cout << ' '; // indent to depth    
+           
+      std::cout << "\"" << value << "\"";      
+   }
+};
+
+void print_info(boost::spirit::info const& what) 
+{
+   using boost::spirit::basic_info_walker;
+
+   printer pr;
+   basic_info_walker<printer> walker(pr, what.tag, 0);
+   boost::apply_visitor(walker, what.value);
+}
+
+
 fp::document fp::parse(const char* filename, const std::vector<std::string>& includes)
 {
    std::ifstream in(filename, std::ios_base::in);
@@ -558,15 +593,37 @@ fp::document fp::parse(const char* filename, const std::vector<std::string>& inc
       std::istream_iterator<char>(in),
       std::istream_iterator<char>(),
       std::back_inserter(str));         
+ 
+   //typedef boost::spirit::istream_iterator/*<char>*/ string_iterator_type;
+   typedef std::string::iterator string_iterator_type;     
+   //typedef boost::spirit::line_pos_iterator<string_iterator_type> iterator_type;
    
-   grammar<std::string::const_iterator> grammar;
-   fp::document doc;
+   grammar<string_iterator_type> grammar;
+   fp::document doc;   
    
-   std::string::const_iterator iter = str.begin();
-   std::string::const_iterator end = str.end();
+   string_iterator_type iter = str.begin();
+   string_iterator_type end = str.end();
+   
+   //iterator_type iter(siter);
+   //iterator_type end(send);   
 
-   if (!qi::phrase_parse(iter, end, grammar, SKIPPER_PARSE_PHRASE, doc) || iter != end)
+   try
+   {
+      if (!qi::phrase_parse(iter, end, grammar, SKIPPER_PARSE_PHRASE, doc) || iter != end)
+      {
+         std::cout << "Parser failure at " << filename << ":" << get_line(str.begin(), iter) << std::endl;
+         throw std::runtime_error("parser failure");
+      }
+   }
+   catch(const boost::spirit::qi::expectation_failure<string_iterator_type>& f)
+   {
+      std::cout << "Parser failure at " << filename << ":" << get_line(str.begin(), f.first) << std::endl;
+      std::cout << "   expected: "; 
+      print_info(f.what_);
+      std::cout << ", got:      " << std::string(f.first, f.first+20) << "..." << std::endl;
+      
       throw std::runtime_error("parser failure");
+   }
       
    return doc;
 }

@@ -45,6 +45,10 @@ struct builder
    /// sort all types within the given package recursively
    static
    void sort_types(model::package& pkg);
+   
+   /// create dependencies between type collections
+   static
+   void create_typecollection_dependencies(model::package& pkg);
 };
 
 

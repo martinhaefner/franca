@@ -185,23 +185,15 @@ BOOST_PYTHON_MODULE(franca)
       .def_readonly("methods", &fm::interface::methods_)
       .def_readonly("fire_and_forget_methods", &fm::interface::ff_methods_)
       .def_readonly("broadcasts", &fm::interface::broadcasts_)
-<<<<<<< HEAD
       .def_readonly("dependencies", &fm::interface::dependencies_)
-=======
->>>>>>> 8eca1f9eac5943af4d9b9184fff7b93d09c991b5
       .def("package", &fm::interface::get_package, return_value_policy<reference_existing_object>())   
       .def("fqn", &fm::interface::fqn)
    ;
       
    class_<fm::typecollection>("typecollection", no_init)            
-<<<<<<< HEAD
       .def("name", &fm::typecollection::name)
       .def_readonly("types", &fm::typecollection::types_)
       .def_readonly("dependencies", &fm::typecollection::dependencies_)
-=======
-      .def("name", &fm::typecollection::name)        
-      .def_readonly("types", &fm::typecollection::types_)      
->>>>>>> 8eca1f9eac5943af4d9b9184fff7b93d09c991b5
       .def("package", &fm::typecollection::get_package, return_value_policy<reference_existing_object>())   
       .def("fqn", &fm::typecollection::fqn)
    ;
@@ -232,15 +224,12 @@ BOOST_PYTHON_MODULE(franca)
            return_value_policy<reference_existing_object>())        
    ;
    
-<<<<<<< HEAD
    class_<std::vector<const fm::typecollection*> >("dependencies_list")   
       .def("__len__", &std::vector<const fm::typecollection*>::size)  
       .def("__getitem__", &std_item<std::vector<const fm::typecollection*> >::get,
            return_value_policy<reference_existing_object>())        
    ;
    
-=======
->>>>>>> 8eca1f9eac5943af4d9b9184fff7b93d09c991b5
    class_<std::vector<fm::arg> >("arg_vector")   
       .def("__len__", &std::vector<fm::arg>::size)  
       .def("__getitem__", &std_item<std::vector<fm::arg> >::get,

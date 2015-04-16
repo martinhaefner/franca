@@ -93,16 +93,18 @@ struct type : named_element, parented<type>
    bool operator<(const type& rhs) const;
    
    /// allow ordering by internal dependencies
-   /// FIXME move to cpp
-   virtual bool depends(const type& rhs) const
-   {
-      return fqn(".") == rhs.fqn(".");   // type always depends on itself
-   }
+   virtual bool depends(const type& rhs) const;
    
    /// @return a list of typecollections this types refers to
    virtual std::set<const typecollection*> refers_to() const;
-   
+      
    typecollection* parent_;
+   
+protected:
+
+   /// internal helper
+   std::set<const typecollection*>& 
+   add_typecollection_if(std::set<const typecollection*>& tcoll_set, const type* to_add) const;
 };
 
 
@@ -141,43 +143,9 @@ struct struct_ : type
       return members_;
    }
    
-   bool depends(const type& rhs) const
-   {
-      if (fqn(".") == rhs.fqn("."))
-         return true;
-         
-      if (base_)
-      {
-         if (base_->fqn(".") == rhs.fqn("."))
-            return true;
-            
-         if (base_->depends(rhs))
-            return true;
-      }
-      
-      for(auto iter = members_.begin(); iter != members_.end(); ++iter)
-      {
-         if (iter->first->fqn(".") == rhs.fqn(".") || iter->first->depends(rhs))
-            return true;
-      }
-      
-      return false;
-   }
+   bool depends(const type& rhs) const;
    
-   std::set<const typecollection*> refers_to() const
-   {
-      std::set<const typecollection*> rc;
-      
-      if (base_ && base_->parent_ && base_->parent_ != parent_)      
-         rc.insert(base_->parent_);      
-      
-      std::for_each(members_.begin(), members_.end(), [&rc, this](const member_type& mem){
-         if (mem.first->parent_ && mem.first->parent_ != this->parent_)
-            rc.insert(mem.first->parent_);              
-      });      
-      
-      return rc;
-   }
+   std::set<const typecollection*> refers_to() const;
    
    type* base_;
    
@@ -218,31 +186,9 @@ struct enumeration : type
       return *dynamic_cast<enumeration*>(base_);
    }
    
-   bool depends(const type& rhs) const
-   {
-      if (fqn(".") == rhs.fqn("."))
-         return true;
-         
-      if (base_)
-      {
-         if (base_->fqn(".") == rhs.fqn("."))
-            return true;
-            
-         return base_->depends(rhs);         
-      }
-         
-      return false;
-   }
+   bool depends(const type& rhs) const;
    
-   std::set<const typecollection*> refers_to() const
-   {
-      std::set<const typecollection*> rc;
-      
-      if (base_ && base_->parent_ && base_->parent_ != parent_)      
-         rc.insert(base_->parent_);      
-      
-      return rc;
-   }
+   std::set<const typecollection*> refers_to() const;
    
    inline
    bool has_base()
@@ -264,7 +210,7 @@ struct union_ : struct_
    }
    
    inline
-   struct_& base()
+   union_& base()
    {
       if (!has_base())
          throw std::runtime_error("no baseclass provided");
@@ -287,26 +233,9 @@ struct typedef_ : type
    
    std::string type_id() const;
    
-   bool depends(const type& rhs) const
-   {
-      if (fqn(".") == rhs.fqn("."))
-         return true;
-         
-      if (real_type_->fqn(".") == rhs.fqn("."))
-         return true;
-         
-      return real_type_->depends(rhs);      
-   }
+   bool depends(const type& rhs) const;
    
-   std::set<const typecollection*> refers_to() const
-   {
-      std::set<const typecollection*> rc;         
-      
-      if (real_type_->parent_ && real_type_->parent_ != parent_)
-         rc.insert(real_type_->parent_);            
-         
-      return rc;
-   }
+   std::set<const typecollection*> refers_to() const;
    
    inline
    type& real_type() const
@@ -329,26 +258,9 @@ struct array : type
    
    std::string type_id() const;
    
-   bool depends(const type& rhs) const
-   {
-      if (fqn(".") == rhs.fqn("."))
-         return true;
-      
-      if (element_type_->fqn(".") == rhs.fqn("."))
-         return true;
-         
-      return element_type_->depends(rhs);
-   }
+   bool depends(const type& rhs) const;
    
-   std::set<const typecollection*> refers_to() const
-   {
-      std::set<const typecollection*> rc;         
-      
-      if (element_type_->parent_)
-         rc.insert(element_type_->parent_);            
-      
-      return rc;
-   }
+   std::set<const typecollection*> refers_to() const;
    
    inline
    const type& element_type() const
@@ -372,19 +284,7 @@ struct map : type
    
    std::string type_id() const;
    
-   bool depends(const type& rhs) const
-   {
-      if (fqn(".") == rhs.fqn("."))
-         return true;
-         
-      if (key_type_->fqn(".") == rhs.fqn("."))
-         return true;
-         
-      if (value_type_->fqn(".") == rhs.fqn("."))
-         return true;
-         
-      return key_type_->depends(rhs) || value_type_->depends(rhs);
-   }
+   bool depends(const type& rhs) const;
    
    inline
    const type& key_type() const
@@ -398,18 +298,7 @@ struct map : type
       return *value_type_;
    }
    
-   std::set<const typecollection*> refers_to() const
-   {
-      std::set<const typecollection*> rc;   
-            
-      if (key_type_->parent_)
-         rc.insert(key_type_->parent_);
-         
-      if (value_type_->parent_)
-         rc.insert(value_type_->parent_);
-      
-      return rc;
-   }
+   std::set<const typecollection*> refers_to() const;
    
    type* key_type_;
    type* value_type_;

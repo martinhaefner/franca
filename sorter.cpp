@@ -5,6 +5,8 @@
 namespace fm = franca::model;
 
 
+namespace {
+
 void collectTypes(std::vector<const fm::type*>& typelist, const fm::typecollection& c)
 {
    std::for_each(c.types_.begin(), c.types_.end(), [&typelist](const fm::type* t){
@@ -58,6 +60,8 @@ void clearTypes(fm::package& p)
       clearTypes(i);
    });
 }
+
+}   // anonymous namespace
 
 
 // ---------------------------------------------------------------------
@@ -122,29 +126,6 @@ void franca::builder::sort_types(fm::package& pkg)
    
    // reinsert types into their type collections in correct order...   
    std::for_each(sorted_typelist.begin(), sorted_typelist.end(), [](const fm::type* t){
-      t->parent_->types_.push_back(const_cast<fm::type*>(t));   
-      
-      // ...and update the type collection dependencies
-      std::set<const fm::typecollection*> colls = t->refers_to();
-      
-      /*
-      std::cout << "type: " << t->name() << ", size=" << colls.size() << std::endl;
-      
-      std::for_each(colls.begin(), colls.end(), [](const fm::typecollection* coll){
-         if (coll)
-         {
-            std::cout << "   ...depends on: " << std::flush;         
-            std::cout << coll->name() << std::endl;
-         }
-         else
-            std::cout << "Shit" << std::endl;
-      });      
-      
-      std::cout << std::endl;
-      */
-      
-      std::for_each(colls.begin(), colls.end(), [t](const fm::typecollection* coll){
-         t->parent_->add_dependency(coll);         
-      });   
+      t->parent_->types_.push_back(const_cast<fm::type*>(t));
    });   
 }

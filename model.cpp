@@ -46,9 +46,25 @@ type::~type()
 }
 
 
+std::set<const typecollection*>& 
+type::add_typecollection_if(std::set<const typecollection*>& tcoll_set, const type* to_add) const
+{
+   if (to_add && to_add->parent_ && to_add->parent_ != parent_)
+      tcoll_set.insert(to_add->parent_);
+      
+   return tcoll_set;
+}
+
+
 std::string type::type_id() const
 {
    return name_;
+}
+
+
+bool type::depends(const type& rhs) const
+{
+   return fqn(".") == rhs.fqn(".");   // type always depends on itself
 }
 
 
@@ -62,6 +78,130 @@ std::set<const typecollection*> type::refers_to() const
 {
    std::set<const typecollection*> rc;
    return rc;
+}
+
+
+bool struct_::depends(const type& rhs) const
+{
+   if (fqn(".") == rhs.fqn("."))
+      return true;
+      
+   if (base_)
+   {
+      if (base_->fqn(".") == rhs.fqn("."))
+         return true;
+         
+      if (base_->depends(rhs))
+         return true;
+   }
+   
+   for(auto iter = members_.begin(); iter != members_.end(); ++iter)
+   {
+      if (iter->first->fqn(".") == rhs.fqn(".") || iter->first->depends(rhs))
+         return true;
+   }
+   
+   return false;
+}
+
+
+std::set<const typecollection*> struct_::refers_to() const
+{
+   std::set<const typecollection*> rc;
+   
+   add_typecollection_if(rc, base_);
+   
+   std::for_each(members_.begin(), members_.end(), [&rc, this](const member_type& mem){
+      add_typecollection_if(rc, mem.first);
+   });      
+   
+   return rc;
+}
+
+
+bool enumeration::depends(const type& rhs) const
+{
+   if (fqn(".") == rhs.fqn("."))
+      return true;
+      
+   if (base_)
+   {
+      if (base_->fqn(".") == rhs.fqn("."))
+         return true;
+         
+      return base_->depends(rhs);         
+   }
+      
+   return false;
+}
+
+
+std::set<const typecollection*> enumeration::refers_to() const
+{
+   std::set<const typecollection*> rc;
+   return add_typecollection_if(rc, base_);
+}
+
+
+
+bool typedef_::depends(const type& rhs) const
+{
+   if (fqn(".") == rhs.fqn("."))
+      return true;
+      
+   if (real_type_->fqn(".") == rhs.fqn("."))
+      return true;
+      
+   return real_type_->depends(rhs);      
+}
+
+
+std::set<const typecollection*> typedef_::refers_to() const
+{
+   std::set<const typecollection*> rc;         
+   return add_typecollection_if(rc, real_type_);
+}
+
+
+bool array::depends(const type& rhs) const
+{
+   if (fqn(".") == rhs.fqn("."))
+      return true;
+   
+   if (element_type_->fqn(".") == rhs.fqn("."))
+      return true;
+      
+   return element_type_->depends(rhs);
+}
+
+
+std::set<const typecollection*> array::refers_to() const
+{
+   std::set<const typecollection*> rc;         
+   return add_typecollection_if(rc, element_type_);
+}
+
+
+bool map::depends(const type& rhs) const
+{
+   if (fqn(".") == rhs.fqn("."))
+      return true;
+      
+   if (key_type_->fqn(".") == rhs.fqn("."))
+      return true;
+      
+   if (value_type_->fqn(".") == rhs.fqn("."))
+      return true;
+      
+   return key_type_->depends(rhs) || value_type_->depends(rhs);
+}
+
+
+std::set<const typecollection*> map::refers_to() const
+{
+   std::set<const typecollection*> rc;   
+   add_typecollection_if(rc, key_type_);
+   return add_typecollection_if(rc, value_type_);
 }
 
 
@@ -128,11 +268,7 @@ void typecollection::add_dependency(const typecollection* coll)
 {
    if (coll && this != coll)
    {
-      auto iter = std::find_if(dependencies_.begin(), dependencies_.end(), [coll](const typecollection* tc){
-         return coll == tc;
-      });
-      
-      if (iter == dependencies_.end())
+      if (std::find(dependencies_.begin(), dependencies_.end(), coll) == dependencies_.end())
          dependencies_.push_back(coll);
    }
 }

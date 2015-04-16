@@ -15,4 +15,5 @@ add_library(franca SHARED
    builder.cpp
    model.cpp   
    sorter.cpp  
+   depend.cpp
 )

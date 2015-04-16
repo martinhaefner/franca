@@ -777,8 +777,10 @@ void franca::builder::parse_and_build(model::package& root, const char* franca_f
    });
    
    // resolve 'forward' decls
-   franca::builder::resolve_all_symbols(root);   
+   resolve_all_symbols(root);   
       
    // sort types within type collections based on dependencies
-   franca::builder::sort_types(root);
+   sort_types(root);
+   
+   create_typecollection_dependencies(root);
 }

@@ -17,3 +17,9 @@ add_library(franca SHARED
    sorter.cpp  
    depend.cpp
 )
+
+
+add_executable(tester
+   testmodel.cpp
+)
+target_link_libraries(tester franca)

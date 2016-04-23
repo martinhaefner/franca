@@ -12,7 +12,7 @@ import franca
 
 
 root = franca.package()
-franca.builder.parse_and_build(root, "hello.fidl")
+franca.builder.parse_and_build(root, "printengine.fidl")
 
 
 def print_typecollection(tc, indent) :

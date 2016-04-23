@@ -1,0 +1,7 @@
+package de.cab
+
+
+typecollection types
+{
+   typedef time_t is UInt32
+}

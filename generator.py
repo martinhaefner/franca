@@ -54,24 +54,20 @@ def collectIncludes(includes, typecol):
 # extend interface
 def dependent_includes(self):
    includes = []
-   
-   for tc in self.dependencies:      
-      includes.append("#include \"" + tc.fqn("/") + ".hpp\"\n")
+   for tc in self.dependencies:
+      includes.append("#include \"." + tc.fqn("/") + ".hpp\"\n")
       collectIncludes(includes, tc)
-   
    # remove doubles
    rc = []   
    [rc.append(x) for x in includes if x not in rc]   
-   
    ret = ""
-   
    for e in rc:
       ret += e
-   
    return ret
    
    
-franca.interface.dependent_includes = MethodType(dependent_includes, None, franca.interface);
+franca.interface.dependent_includes      = MethodType(dependent_includes, None, franca.interface);   
+franca.typecollection.dependent_includes = MethodType(dependent_includes, None, franca.typecollection);
 
 
 # extend type
@@ -96,7 +92,7 @@ def cpp_type(self) :
    elif self.name() == "String" :      
       return "std::string"
    else :
-      return self.name()
+      return self.fqn("::")
    
    
 franca.type.cpp_type = MethodType(cpp_type, None, franca.type);
@@ -139,9 +135,124 @@ def for_method_decl_out(self) :
          
    return rc
 
-
 franca.arg_vector.for_method_decl_in  = MethodType(for_method_decl_in, None, franca.arg_vector);
 franca.arg_vector.for_method_decl_out = MethodType(for_method_decl_out, None, franca.arg_vector);
+
+
+def typedef(self) :
+   if len(self) == 0:
+      return "void"
+      
+   if len(self) == 1:
+      return self[0].type().cpp_type()
+      
+   rc = "std::tuple<"   
+   for i in range(0, len(self)) :
+      rc += self[i].type().cpp_type() 
+      
+      if i < len(self)-1 :
+         rc += ", "
+         
+   rc += ">"
+   return rc
+
+franca.arg_vector.typedef  = MethodType(typedef, None, franca.arg_vector);
+   
+   
+def print_enumerators(self):
+   rc = ""
+   i = 0
+   for e in self.enumerators:
+      if i > 0:
+         rc += ",\r\n"
+      rc += "   " + e.name()
+      i += 1
+   return rc
+   
+franca.enumeration.print_enumerators = MethodType(print_enumerators, None, franca.enumeration);
+
+
+# ### type collections #################################################
+
+def gen_tc_headers(pack):
+   for tc in pack.typecollections:
+      template = engine.get_template('tc_template.hpp')
+      
+      try:
+         os.makedirs("." + pack.fqn('/'))
+         
+      except os.error:
+         True  # ignore
+         
+      f = open("." + pack.fqn('/') + '/' + tc.name() + '.hpp', 'w')
+      
+      f.write(template.render({'typecollection': tc}))
+      f.close()
+      
+   # recurse
+   for p in pack.packages:
+      gen_tc_headers(p)
+
+# ### interfaces #######################################################
+
+def gen_iface_headers(pack):
+   for iface in pack.interfaces:
+      template = engine.get_template('if_template.hpp')
+      
+      try:
+         os.makedirs("." + pack.fqn('/'))
+         
+      except os.error:
+         True  # ignore
+         
+      f = open("." + pack.fqn('/') + '/' + iface.name() + '.hpp', 'w')
+      
+      f.write(template.render({'interface': iface}))
+      f.close()
+      
+   # recurse
+   for p in pack.packages:
+      gen_iface_headers(p)
+
+
+def gen_stub_headers(pack):
+   for iface in pack.interfaces:
+      template = engine.get_template('stub_template.hpp')
+      
+      try:
+         os.makedirs("." + pack.fqn('/'))
+         
+      except os.error:
+         True  # ignore
+         
+      f = open("." + pack.fqn('/') + '/' + iface.name() + 'Stub.hpp', 'w')
+      
+      f.write(template.render({'interface': iface}))
+      f.close()
+      
+   # recurse
+   for p in pack.packages:
+      gen_stub_headers(p)
+
+
+def gen_skeleton_headers(pack):
+   for iface in pack.interfaces:
+      template = engine.get_template('skeleton_template.hpp')
+      
+      try:
+         os.makedirs("." + pack.fqn('/'))
+         
+      except os.error:
+         True  # ignore
+         
+      f = open("." + pack.fqn('/') + '/' + iface.name() + 'Skeleton.hpp', 'w')
+      
+      f.write(template.render({'interface': iface}))
+      f.close()
+      
+   # recurse
+   for p in pack.packages:
+      gen_skeleton_headers(p)
 
 
 # ### START of main program ############################################ 
@@ -154,11 +265,20 @@ engine = Engine(
     extensions=[CoreExtension()]
 )
 
+engine.global_vars.update({
+   'franca': franca,
+})
+
+
 template = engine.get_template('client_template.hpp')
 
 # load franca
 root = franca.package()
-franca.builder.parse_and_build(root, "hello.fidl")
+franca.builder.parse_and_build(root, "printengine.fidl")
 
 # generate output
-print(template.render({'interface': root.packages[0].packages[0].interfaces[0]}))
+gen_tc_headers(root)
+gen_iface_headers(root)
+gen_stub_headers(root)
+gen_skeleton_headers(root)
+

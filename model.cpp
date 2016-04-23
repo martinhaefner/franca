@@ -285,11 +285,16 @@ type* typecollection::resolve(const std::string& name)
 
       auto iter = intrinsic_types.find(name);
       if (iter != intrinsic_types.end())
+      {
+         //std::cout << "Found 1" << std::endl;
          return &const_cast<type&>(*iter);      
-            
+      }     
       auto iter2 = std::find_if(types_.begin(), types_.end(), [name](const type* t){ return name == t->name(); });
-      if (iter2 != types_.end())      
-         return *iter2;         
+      if (iter2 != types_.end())
+      {   
+         //std::cout << "Found 2" << std::endl;   
+         return *iter2;
+      }         
    }
    else if (tokens.size() > 1)
    {      
@@ -303,19 +308,26 @@ type* typecollection::resolve(const std::string& name)
       std::string typecoll = *tokens.rbegin();
       tokens.pop_back();
       
-      //std::cout << "Searching for " << type_name << " in collection " << typecoll << std::endl;
+      //std::cout << "Searching for " << type_name << " in collection " << parent_->fqn(".") << "." << typecoll << std::endl;
       
       // namespace lookup
       type* rc = parent_->resolve(tokens.begin(), tokens.end(), typecoll, type_name);      
       
-      if (rc != nullptr)         
+      if (rc != nullptr)   
+      {
+         //std::cout << "Found 3" << std::endl;      
          return rc;
+      }
+      //std::cout << "Searching for " << type_name << " in root" << std::endl;
       
       // root lookup
       rc = parent_->root().resolve(tokens.begin(), tokens.end(), typecoll, type_name);                                 
       
       if (rc != nullptr)         
+      {
+         //std::cout << "Found 4" << std::endl;
          return rc;
+      }
       
       // imports lookup      
       for(auto iter = parent_->imports_.begin(); iter != parent_->imports_.end(); ++iter)
@@ -328,7 +340,10 @@ type* typecollection::resolve(const std::string& name)
          rc = parent_->root().resolve(root_tokens.begin(), root_tokens.end(), typecoll, type_name);                                 
          
          if (rc != nullptr)         
-            return rc;      
+         {
+            //std::cout << "Found 5" << std::endl;
+            return rc;
+         }      
       }
    }   
    

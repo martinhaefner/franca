@@ -12,6 +12,12 @@ namespace fm = franca::model;
 using namespace boost::python;
    
 
+const fm::type& get_first(std::pair<fm::type*, std::string>& p)
+{
+  return *p.first;
+}
+
+
 void IndexError() 
 { 
    PyErr_SetString(PyExc_IndexError, "Index out of range"); 
@@ -267,7 +273,8 @@ BOOST_PYTHON_MODULE(franca)
    ;
    
    class_<fm::struct_::member_type>("member_pair")   
-      .def_readonly("first", &fm::struct_::member_type::first)  
+      //.def_readonly("first", &fm::struct_::member_type::first)  
+      .add_property("first", make_function(get_first, return_value_policy<copy_const_reference>()))
       .def_readonly("second", &fm::struct_::member_type::second)
    ; 
    

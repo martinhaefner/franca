@@ -1,0 +1,66 @@
+package de.cab.print
+   
+   
+import de.cab.types from "types.fidl"
+
+
+interface PrintEngine 
+{
+   version { major 0 minor 1 }
+   
+   method send_command
+   {
+      in  { types.Command i }
+   }
+   
+   method get_tph_info
+   {
+      out {
+         types.TPHInfo info
+      }
+   }
+   
+   method set_value_by_string
+   {
+      in {
+         String id
+         String value
+      }
+   }
+   
+   method get_value_as_string
+   {
+      in { String id }
+      out { String value }
+   }
+}
+
+typecollection types
+{
+   enumeration Command
+   {
+      PauseEin
+      PauseAus
+      KomplettAbbruch
+      Feed
+   }
+   
+   struct TPHVersion
+   {
+      UInt8 h
+      UInt8 m
+      UInt8 l
+   }
+   
+   struct TPHInfo
+   {
+      String serial
+      String board_serial
+      
+      TPHVersion _version
+      Int32 dpi
+      
+      de.cab.types.time_t first
+      de.cab.types.time_t last
+   }
+}

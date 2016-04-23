@@ -113,6 +113,7 @@ fm::type* internal_resolve_unresolved(fm::type* t, fm::typecollection& context)
       
       if (udef)
       {   
+         //std::cout << "Searching in " << context.fqn(".") << std::endl;
          fm::type* rc = context.resolve(udef->name());
          
          if (rc)
@@ -121,7 +122,10 @@ fm::type* internal_resolve_unresolved(fm::type* t, fm::typecollection& context)
             return rc;
          }
          else
+         {
+            std::cerr << "Cannot resolve: " << udef->name() << std::endl;
             throw std::runtime_error("cannot resolve type");
+         }
       }
    }
  
@@ -138,18 +142,21 @@ void internal_resolve_unresolved(fm::attribute& a)
 
 void internal_resolve_unresolved(fm::method& m)
 {
+   //std::cerr << "A" << std::endl;
    std::for_each(m.in_.begin(), m.in_.end(), [&m](fm::arg& a){ 
       a.type_ = internal_resolve_unresolved(a.type_, m.get_interface()); 
       m.get_interface().add_dependency(a.type_->parent_);
    });
-   
+   //std::cerr << "B" << std::endl;
    std::for_each(m.out_.begin(), m.out_.end(), [&m](fm::arg& a){ 
       a.type_ = internal_resolve_unresolved(a.type_, m.get_interface());       
       m.get_interface().add_dependency(a.type_->parent_);
    });
+   //std::cerr << "C" << std::endl;
    
    // FIXME need dependency here!
-   m.errors_ = internal_resolve_unresolved(m.errors_, m.get_interface());
+   //m.errors_ = internal_resolve_unresolved(m.errors_, m.get_interface());
+   //std::cerr << "D" << std::endl;
 }
 
 
@@ -216,21 +223,29 @@ void internal_resolve_unresolved_tc(fm::typecollection& coll)
 
 void internal_resolve_unresolved(fm::interface& iface)
 {
+   //std::cerr << "1" << std::endl;
    internal_resolve_unresolved_tc(iface);
-
+   //std::cerr << "2" << std::endl;
    std::for_each(iface.attrs_.begin(), iface.attrs_.end(), [](fm::attribute& a){ internal_resolve_unresolved(a); });
+   //std::cerr << "3" << std::endl;
    std::for_each(iface.methods_.begin(), iface.methods_.end(), [](fm::method& m){ internal_resolve_unresolved(m); });
+   //std::cerr << "4" << std::endl;
    std::for_each(iface.ff_methods_.begin(), iface.ff_methods_.end(), [](fm::fire_and_forget_method& m){ internal_resolve_unresolved(m); });
+   //std::cerr << "5" << std::endl;
    std::for_each(iface.broadcasts_.begin(), iface.broadcasts_.end(), [](fm::broadcast& b){ internal_resolve_unresolved(b); });         
+   //std::cerr << "6" << std::endl;
 }
 
 
 void internal_resolve_unresolved(fm::package& pack)
 {
+   std::cerr << "I" << std::endl;
    std::for_each(pack.collections_.begin(), pack.collections_.end(), [](fm::typecollection& coll){ internal_resolve_unresolved_tc(coll); });
+   std::cerr << "II" << std::endl;
    std::for_each(pack.interfaces_.begin(), pack.interfaces_.end(), [](fm::interface& iface){ internal_resolve_unresolved(iface); });
-   
+   std::cerr << "III" << std::endl;
    std::for_each(pack.packages_.begin(), pack.packages_.end(), [](fm::package& pck){ internal_resolve_unresolved(pck); });
+   std::cerr << "IV" << std::endl;
 }
 
 
@@ -754,7 +769,10 @@ fm::package& franca::builder::build(fm::package& root, const fp::document& parse
 /*static*/
 void franca::builder::resolve_all_symbols(model::package& root)
 {
+   /// XXX seems to be quite strange, removing this output makes it crash
+   std::cerr << "X" << std::endl;
    internal_resolve_unresolved(root);
+   std::cerr << "Y" << std::endl;
 }
 
 

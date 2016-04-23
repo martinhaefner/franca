@@ -31,24 +31,10 @@ public:
    
    @end
    
-   @for b in interface.broadcasts :
-   virtual void @{b.name()}(@{b.args.for_method_decl_in()}) = 0;   
    
-   @end
-   
-   @for m in interface.fire_and_forget_methods :
-   void @{m.name()}(@{m.args.for_method_decl_in()})
-   {
-      send_request(...);
-   }
-   
-   @end
    
 private:
    
-   @for a in interface.attributes :
-   attribute<@{a.type().cpp_type()}> @{a.name()}_;   
-   @end
 };
 
 

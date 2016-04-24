@@ -47,9 +47,9 @@ typecollection types
    
    struct TPHVersion
    {
-      UInt8 h
-      UInt8 m
-      UInt8 l
+      Int8 h
+      Int8 m
+      Int8 l
    }
    
    struct TPHInfo

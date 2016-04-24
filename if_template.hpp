@@ -1,8 +1,11 @@
 @require(interface)
 
-
 #ifndef @{interface.fqn('_').upper()}_HPP
 #define @{interface.fqn('_').upper()}_HPP
+
+#include <chrono>
+
+#include "core/dbus/traits/service.h"
 
 
 @{interface.dependent_includes()}
@@ -40,8 +43,10 @@ protected:
 @{interface.package().namespaces_close()}
 
 
-namespace traits
-{
+namespace core {
+namespace dbus {
+namespace traits {
+
 template<>
 struct Service<@{interface.package().fqn("::")}::I@{interface.name()}>
 {
@@ -51,6 +56,8 @@ struct Service<@{interface.package().fqn("::")}::I@{interface.name()}>
         return s;
     }
 };
+
+} } }
 
 
 #endif   // @{interface.fqn('_').upper()}_HPP

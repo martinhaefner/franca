@@ -4,20 +4,21 @@
 #ifndef @{interface.fqn('_').upper()}STUB_HPP
 #define @{interface.fqn('_').upper()}STUB_HPP
 
+#include "core/dbus/stub.h"
 
 #include "@{interface.fqn("/")[1:]}.hpp"
 
 
 @{interface.package().namespaces_open()}
 
-class @{interface.name()}Stub : public public dbus::Stub<I@{interface.name()}>
+class @{interface.name()}Stub : public core::dbus::Stub<I@{interface.name()}>
 {
 public:
    typedef std::shared_ptr<@{interface.name()}Stub> Ptr;
 
-   @{interface.name()}Stub(const dbus::Bus::Ptr& bus, const char* role) 
-    : dbus::Stub<I@{interface.name()}>(bus)
-    , object(access_service()->object_for_path(dbus::types::ObjectPath("@{interface.fqn("/")}" + stub)))
+   @{interface.name()}Stub(const core::dbus::Bus::Ptr& bus) 
+    : core::dbus::Stub<I@{interface.name()}>(bus)
+    , object(access_service()->object_for_path(core::dbus::types::ObjectPath("@{interface.fqn("/")}")))
    {
       // NOOP
    }
@@ -45,7 +46,7 @@ public:
    @end
    
 private:
-    dbus::Object::Ptr object;
+    core::dbus::Object::Ptr object;
 };
 
 

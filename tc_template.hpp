@@ -5,11 +5,13 @@
 #define @{typecollection.fqn('_').upper()}_HPP
 
 
-#include "dbus/core/codec.h"
+#include "core/dbus/codec.h"
 @{typecollection.dependent_includes()}
 
 
 @{typecollection.package().namespaces_open()}
+namespace @{typecollection.name()} {
+   
 
 @for t in typecollection.types:
    @if isinstance(t, franca.struct):
@@ -25,18 +27,20 @@ enum class @{t.name()} : int32_t
 @{t.print_enumerators()}
 };
    @elif isinstance(t, franca.typedef):
-typedef @{t.real_type().fqn("::")} @{t.name()};
+typedef @{t.real_type().cpp_type()} @{t.name()};
    @end
    
 @end
 
+}   // namespace
 @{typecollection.package().namespaces_close()}
 
 
-namespace dbus
-{
 namespace core
 {
+namespace dbus
+{
+
 @for t in typecollection.types:
 @if isinstance(t, franca.struct):
 template<>
@@ -65,22 +69,21 @@ struct Codec<@{t.cpp_type()}>
     inline static 
     void encode_argument(Message::Writer& out, const @{t.cpp_type()}& value)
     {
-       out.push_int32(reinterpret_cast<int32_t>(value));
+       out.push_int32(int32_t(value));
     }
 
     inline static 
     void decode_argument(Message::Reader& in, @{t.cpp_type()}& value)
     {
-       value = reinterpret_cast<@{t.cpp_type()}>(in.pop_int32());
+       value = @{t.cpp_type()}(in.pop_int32());
     }
 };
 @end
 
 @end
-@end
 
-}   // namespace core
 }   // namespace dbus
+}   // namespace core
 
 
 #endif   // @{typecollection.fqn('_').upper()}_HPP

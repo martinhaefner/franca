@@ -4,19 +4,19 @@
 #ifndef @{interface.fqn('_').upper()}SKELETON_HPP
 #define @{interface.fqn('_').upper()}SKELETON_HPP
 
-
+#include "core/dbus/skeleton.h"
 #include "@{interface.fqn("/")[1:]}.hpp"
 
 
 @{interface.package().namespaces_open()}
 
 
-class @{interface.name()}Skeleton : public dbus::Skeleton<I@{interface.name()}>
+class @{interface.name()}Skeleton : public core::dbus::Skeleton<I@{interface.name()}>
 {
 public:
-    @{interface.name()}Skeleton(const dbus::Bus::Ptr& bus, const char* role) 
-     : dbus::Skeleton<I@{interface.name()}>(bus)
-     , object(access_service()->add_object_for_path(dbus::types::ObjectPath("@{interface.fqn("/")}" + role)))
+    @{interface.name()}Skeleton(const core::dbus::Bus::Ptr& bus) 
+     : core::dbus::Skeleton<I@{interface.name()}>(bus)
+     , object(access_service()->add_object_for_path(core::dbus::types::ObjectPath("@{interface.fqn("/")}")))
     {
        @for m in interface.methods :
        object->install_method_handler<I@{interface.name()}::@{m.name()}>(
@@ -35,7 +35,7 @@ public:
 private:
     
     @for m in interface.methods :
-    void handle_@{m.name()}(const dbus::Message::Ptr& msg)
+    void handle_@{m.name()}(const core::dbus::Message::Ptr& msg)
     {
         @if len(m.in_args) > 0:
         @{m.in_args.typedef()} in;
@@ -51,7 +51,7 @@ private:
         @end
         );
         
-        auto reply = dbus::Message::make_method_return(msg);
+        auto reply = core::dbus::Message::make_method_return(msg);
         @if len(m.out_args) > 0:
         reply->writer() << out;
         @end
@@ -60,7 +60,7 @@ private:
     }
     @end
    
-    dbus::Object::Ptr object;
+    core::dbus::Object::Ptr object;
 };
 
 

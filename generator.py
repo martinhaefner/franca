@@ -47,7 +47,7 @@ franca.package.namespaces_close = MethodType(namespaces_close, None, franca.pack
 
 def collectIncludes(includes, typecol):
    for tc in typecol.dependencies:      
-      includes.append("#include \"" + tc.fqn("/") + ".hpp\"\n")
+      includes.append("#include \"" + tc.fqn("/")[1:] + ".hpp\"\n")
       collectIncludes(includes, tc)
    
 
@@ -55,7 +55,7 @@ def collectIncludes(includes, typecol):
 def dependent_includes(self):
    includes = []
    for tc in self.dependencies:
-      includes.append("#include \"." + tc.fqn("/") + ".hpp\"\n")
+      includes.append("#include \"" + tc.fqn("/")[1:] + ".hpp\"\n")
       collectIncludes(includes, tc)
    # remove doubles
    rc = []   

@@ -18,8 +18,8 @@ void collectTypes(std::vector<const fm::type*>& typelist, const fm::typecollecti
 void collectTypes(std::vector<const fm::type*>& typelist, const fm::package& p)
 {
    // all packages
-   std::for_each(p.packages_.begin(), p.packages_.end(), [&typelist](const fm::package& p){   
-      collectTypes(typelist, p);
+   std::for_each(p.packages_.begin(), p.packages_.end(), [&typelist](const std::shared_ptr<fm::package>& p){   
+      collectTypes(typelist, *p);
    });
    
    // typecollections...
@@ -46,8 +46,8 @@ void clearTypes(fm::typecollection& c)
 void clearTypes(fm::package& p)
 {
    // all packages
-   std::for_each(p.packages_.begin(), p.packages_.end(), [](fm::package& p){   
-      clearTypes(p);
+   std::for_each(p.packages_.begin(), p.packages_.end(), [](std::shared_ptr<fm::package>& p){   
+      clearTypes(*p);
    });
    
    // typecollections...

@@ -9,6 +9,37 @@ namespace fm = franca::model;
 namespace fp = franca::parser;
 
 
+void check_depends(fm::interface& if_)
+{
+   for (auto& dep : if_.dependencies_)
+   {
+      std::cout << std::hex << dep << " -> " << dep->fqn("/") << std::endl;
+   }
+}
+
+
+void check_depends(fm::typecollection& coll)
+{
+   for (auto& dep : coll.dependencies_)
+   {
+      std::cout << std::hex << dep << " -> " << dep->fqn("/") << std::endl;
+   }
+}
+
+
+void check_depends(fm::package& p)
+{
+   for (auto& tc : p.collections_)
+      check_depends(tc);
+   
+   for (auto& if_ : p.interfaces_)
+      check_depends(if_);
+   
+   for(auto& pck : p.packages_)
+      check_depends(*pck);
+}
+
+
 int main(int argc, const char** argv)
 {
    if (argc < 2)
@@ -17,18 +48,13 @@ int main(int argc, const char** argv)
       return EXIT_FAILURE;
    }
    
-   std::cout << "Parsing..." << std::endl;
-   std::vector<std::string> includes;
-   fp::document doc = fp::parse(argv[1], includes);
-   
-   std::cout << "Building model..." << std::endl;
    fm::package root;
-   fm::package& this_package = franca::builder::build(root, doc, "");
+   franca::builder::parse_and_build(root, argv[1]);
    
-   std::cout << "Resolving..." << std::endl;
-   franca::builder::resolve_all_symbols(root);
-   
-   std::cout << root.name() << root.packages_.front().name() << "." << root.packages_.front().packages_.front().name() << std::endl;
+   for(auto& p : root.packages_)
+      check_depends(*p);
+      
+   std::cout << root.name() << root.packages_.front()->name() << "." << root.packages_.front()->packages_.front()->name() << std::endl;
    
    return EXIT_SUCCESS;
 }

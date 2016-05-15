@@ -100,8 +100,8 @@ void add_dependencies(fm::interface& i)
 void traverse_for_dependency(fm::package& p)
 {
    // all packages
-   std::for_each(p.packages_.begin(), p.packages_.end(), [](fm::package& p){   
-      traverse_for_dependency(p);
+   std::for_each(p.packages_.begin(), p.packages_.end(), [](std::shared_ptr<fm::package>& p){   
+      traverse_for_dependency(*p);
    });
    
    // ...and interaces

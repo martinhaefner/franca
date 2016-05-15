@@ -266,10 +266,15 @@ typecollection::typecollection(const std::string& name)
 
 void typecollection::add_dependency(const typecollection* coll)
 {
+   if (!coll)
+      return;
+      
    if (coll && this != coll)
    {
       if (std::find(dependencies_.begin(), dependencies_.end(), coll) == dependencies_.end())
+      {
          dependencies_.push_back(coll);
+      }
    }
 }
 
@@ -389,20 +394,20 @@ package& package::root()
 
 package& package::add_package(const std::string& packagename)
 {      
-   auto iter = std::find_if(packages_.begin(), packages_.end(), [&packagename](const package& pck){
-      return pck.name() == packagename;
+   auto iter = std::find_if(packages_.begin(), packages_.end(), [&packagename](const std::shared_ptr<package>& pck){
+      return pck->name() == packagename;
    });
    
    if (iter != packages_.end())
    {
-      return *iter;
+      return **iter;
    }
    else
    {
-      packages_.push_back(package(packagename));
-      packages_.back().parent_ = this;
+      packages_.push_back(std::make_shared<package>(packagename));
+      packages_.back()->parent_ = this;
    
-      return packages_.back();
+      return *packages_.back();
    }
 }
 

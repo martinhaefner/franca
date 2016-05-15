@@ -32,6 +32,8 @@ struct named_element
       // NOOP
    }
    
+   virtual ~named_element() = default;
+   
    inline
    std::string name() const
    {
@@ -39,12 +41,6 @@ struct named_element
    }
    
 protected:
-   
-   inline
-   ~named_element() 
-   {
-      // NOOP
-   }
    
    std::string name_;
 };
@@ -55,9 +51,9 @@ struct parented
 {      
    std::string fqn(const char* sep) const
    {
-      std::string this_name = static_cast<const ElementT*>(this)->name();
+      std::string this_name = dynamic_cast<const ElementT*>(this)->name();
       
-      auto parent = static_cast<const ElementT*>(this)->parent_;         
+      auto parent = dynamic_cast<const ElementT*>(this)->parent_;         
       if (parent != 0)    
       {  
          std::string p = parent->fqn(sep);         
@@ -69,10 +65,7 @@ struct parented
 
 protected:
 
-   virtual ~parented()
-   {
-      // NOOP
-   }
+   virtual ~parented() = default;
 };
 
 
@@ -328,6 +321,7 @@ struct method : named_element
    inline
    method(const std::string& name, interface& iface)
     : named_element(name)
+    , errors_(nullptr)
     , interface_(iface)
    {
       // NOOP
@@ -464,6 +458,10 @@ struct typecollection : named_element, parented<typecollection>
 struct interface : typecollection
 {
    interface(const std::string& name, int major, int minor);
+
+   inline int deps() {
+      return dependencies_.size();
+   }
    
    int major_;
    int minor_;
@@ -498,7 +496,7 @@ struct package : named_element, parented<package>
    {
       return *parent_;
    }
-      
+   
    ///@return a reference to the newly insered or already available package
    package& add_package(const std::string& packagename);
    
@@ -519,7 +517,7 @@ struct package : named_element, parented<package>
    std::list<typecollection> collections_;
    std::list<interface> interfaces_;   
    
-   std::list<package> packages_;
+   std::list<std::shared_ptr<package> > packages_;
    package* parent_;
    
    std::vector<std::string> imports_;
@@ -537,10 +535,10 @@ type* package::resolve(IteratorT begin, IteratorT end, const std::string& typeco
    
    if (begin != end)
    {      
-      auto iter = std::find_if(packages_.begin(), packages_.end(), [begin](const package& pack){ return *begin == pack.name(); });
+      auto iter = std::find_if(packages_.begin(), packages_.end(), [begin](const std::shared_ptr<package>& pack){ return *begin == pack->name(); });
       
       if (iter != packages_.end())      
-         return iter->resolve(++begin, end, typecoll, type_name);      
+         return (*iter)->resolve(++begin, end, typecoll, type_name);      
    }
    else
    {         

@@ -55,6 +55,35 @@ struct std_list_item
 
 
 template<typename T>
+struct std_ptr_list_item
+{
+   typedef typename T::value_type::element_type value_type;
+   
+   static 
+   const value_type& get(T const& x, int i)
+   {
+      if (i < 0) 
+         i += x.size();
+         
+      if (i >= 0 && i < x.size()) 
+      {
+         auto iter = x.begin();
+         
+         while(--i >= 0)
+            ++iter;
+            
+         return **iter;
+      }         
+      
+      IndexError(); 
+      
+      // make compiler happy
+      abort();        
+   }   
+};
+
+
+template<typename T>
 struct std_item
 {
    typedef typename T::value_type value_type;
@@ -93,6 +122,7 @@ BOOST_PYTHON_MODULE(franca)
       .def_readonly("typecollections", &fm::package::collections_)
       .def_readonly("interfaces", &fm::package::interfaces_)
       .def_readonly("packages", &fm::package::packages_)
+      //.def("packages", &fm::package::get_sub_packages, return_value_policy<reference_existing_object>())
       //.def_readonly("parent", &fm::package::parent_)
       .def("package", &fm::package::get_package, return_value_policy<reference_existing_object>())   
       .def("is_root", &fm::package::is_root)
@@ -182,20 +212,6 @@ BOOST_PYTHON_MODULE(franca)
       .def("type", &fm::attribute::get_type, return_value_policy<reference_existing_object>())
    ;   
    
-   class_<fm::interface>("interface", no_init)    
-      .def("name", &fm::interface::name)        
-      .def_readonly("major", &fm::interface::major_)
-      .def_readonly("minor", &fm::interface::minor_)
-      .def_readonly("types", &fm::interface::types_)            
-      .def_readonly("attributes", &fm::interface::attrs_)
-      .def_readonly("methods", &fm::interface::methods_)
-      .def_readonly("fire_and_forget_methods", &fm::interface::ff_methods_)
-      .def_readonly("broadcasts", &fm::interface::broadcasts_)
-      .def_readonly("dependencies", &fm::interface::dependencies_)
-      .def("package", &fm::interface::get_package, return_value_policy<reference_existing_object>())   
-      .def("fqn", &fm::interface::fqn)
-   ;
-      
    class_<fm::typecollection>("typecollection", no_init)            
       .def("name", &fm::typecollection::name)
       .def_readonly("types", &fm::typecollection::types_)
@@ -203,24 +219,34 @@ BOOST_PYTHON_MODULE(franca)
       .def("package", &fm::typecollection::get_package, return_value_policy<reference_existing_object>())   
       .def("fqn", &fm::typecollection::fqn)
    ;
+   
+   class_<fm::interface, bases<fm::typecollection>>("interface", no_init)    
+      .def_readonly("major", &fm::interface::major_)
+      .def("deps", &fm::interface::deps)
+      .def_readonly("minor", &fm::interface::minor_)
+      .def_readonly("attributes", &fm::interface::attrs_)
+      .def_readonly("methods", &fm::interface::methods_)
+      .def_readonly("fire_and_forget_methods", &fm::interface::ff_methods_)
+      .def_readonly("broadcasts", &fm::interface::broadcasts_)
+   ;
       
    // --- STL helpers --------------------------------------------------
    
-   class_<std::list<fm::package> >("package_list")   
+   class_<std::list<std::shared_ptr<fm::package>>>("package_list")   
       .def("__len__", &std::list<fm::package>::size)  
-      .def("__getitem__", &std_list_item<std::list<fm::package> >::get,
+      .def("__getitem__", &std_ptr_list_item<std::list<std::shared_ptr<fm::package>>>::get,
            return_value_policy<reference_existing_object>())        
    ;
    
    class_<std::list<fm::typecollection> >("typecollection_list")   
       .def("__len__", &std::list<fm::typecollection>::size)        
-      .def("__getitem__", &std_list_item<std::list<fm::typecollection> >::get,
+      .def("__getitem__", &std_list_item<std::list<fm::typecollection>>::get,
            return_value_policy<reference_existing_object>())        
    ;
    
    class_<std::list<fm::interface> >("interface_list")   
       .def("__len__", &std::list<fm::interface>::size)        
-      .def("__getitem__", &std_list_item<std::list<fm::interface> >::get,
+      .def("__getitem__", &std_list_item<std::list<fm::interface>>::get,
            return_value_policy<reference_existing_object>())        
    ;
    

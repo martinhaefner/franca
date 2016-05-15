@@ -54,15 +54,19 @@ def collectIncludes(includes, typecol):
 # extend interface
 def dependent_includes(self):
    includes = []
+   dep = self.dependencies
+      
    for tc in self.dependencies:
       includes.append("#include \"" + tc.fqn("/")[1:] + ".hpp\"\n")
       collectIncludes(includes, tc)
+   
    # remove doubles
    rc = []   
    [rc.append(x) for x in includes if x not in rc]   
    ret = ""
    for e in rc:
       ret += e
+   
    return ret
    
    
@@ -198,7 +202,6 @@ def gen_tc_headers(pack):
 def gen_iface_headers(pack):
    for iface in pack.interfaces:
       template = engine.get_template('if_template.hpp')
-      
       try:
          os.makedirs("." + pack.fqn('/'))
          
@@ -206,7 +209,6 @@ def gen_iface_headers(pack):
          True  # ignore
          
       f = open("." + pack.fqn('/') + '/' + iface.name() + '.hpp', 'w')
-      
       f.write(template.render({'interface': iface}))
       f.close()
       
@@ -281,4 +283,3 @@ gen_tc_headers(root)
 gen_iface_headers(root)
 gen_stub_headers(root)
 gen_skeleton_headers(root)
-
